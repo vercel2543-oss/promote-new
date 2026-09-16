@@ -47,12 +47,18 @@ export const Navbar: React.FC = () => {
     systemSettings,
     isFirebaseSyncing,
     isFirebaseConnected,
+    isFirestoreQuotaExceeded,
     syncAllToFirebase,
   } = useApp();
 
   const [syncToast, setSyncToast] = useState<string | null>(null);
 
   const handleManualSync = async () => {
+    if (isFirestoreQuotaExceeded) {
+      setSyncToast('โควต้าการเขียน Firestore เต็มแล้ว ระบบกำลังใช้ LocalStorage แทนชั่วคราว');
+      setTimeout(() => setSyncToast(null), 3500);
+      return;
+    }
     try {
       setSyncToast('กำลังเชื่อมต่อและซิงค์ข้อมูลกับ Firebase Cloud...');
       await syncAllToFirebase();
@@ -202,19 +208,31 @@ export const Navbar: React.FC = () => {
                 onClick={handleManualSync}
                 disabled={isFirebaseSyncing}
                 className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 active:scale-95 border border-slate-200/80 text-[11px] font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
-                title="คลิกเพื่อซิงค์ข้อมูลล่าสุดกับ Firebase Cloud ทันที (เชื่อมต่อสด PC, iOS, Android)"
+                title={
+                  isFirestoreQuotaExceeded
+                    ? 'โควต้า Firestore เต็ม - บันทึกลง LocalStorage อัตโนมัติ'
+                    : 'คลิกเพื่อซิงค์ข้อมูลล่าสุดกับ Firebase Cloud ทันที (เชื่อมต่อสด PC, iOS, Android)'
+                }
               >
                 {isFirebaseSyncing ? (
                   <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                ) : isFirestoreQuotaExceeded ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
                 ) : (
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                 )}
-                <Cloud className="w-3.5 h-3.5 text-blue-600" />
+                <Cloud className={`w-3.5 h-3.5 ${isFirestoreQuotaExceeded ? 'text-amber-600' : 'text-blue-600'}`} />
                 <span className="text-slate-600 text-[11px] hidden sm:inline">
-                  {isFirebaseSyncing ? 'กำลังซิงค์...' : 'Cloud Realtime'}
+                  {isFirestoreQuotaExceeded
+                    ? 'โหมด LocalStorage'
+                    : isFirebaseSyncing
+                    ? 'กำลังซิงค์...'
+                    : 'Cloud Realtime'}
                 </span>
               </button>
 

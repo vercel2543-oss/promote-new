@@ -12,6 +12,7 @@ import { UserManagementView } from './components/UserManagementView';
 import { FormManagementView } from './components/FormManagementView';
 import { StaffPortalView } from './components/StaffPortalView';
 import { SystemSettingsView } from './components/SystemSettingsView';
+import { QuotaWarningBanner } from './components/QuotaWarningBanner';
 import { AggregatedResult } from './types';
 import { ShieldCheck, Award } from 'lucide-react';
 
@@ -23,6 +24,9 @@ const MainAppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-blue-600 selection:text-white pb-16 lg:pb-0">
       {/* Top Navigation & Role Switcher */}
       <Navbar />
+
+      {/* Quota limit notification banner */}
+      <QuotaWarningBanner />
 
       {/* Main View Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">

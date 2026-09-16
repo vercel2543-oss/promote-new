@@ -35,6 +35,47 @@ const SETTINGS_COLLECTION = 'systemSettings';
 const LOGS_COLLECTION = 'auditLogs';
 const THRESHOLDS_COLLECTION = 'gradeThresholds';
 
+// Quota exceeded state & event subscriber
+let _isQuotaExceeded = false;
+const quotaListeners: Array<(exceeded: boolean) => void> = [];
+
+export function isFirestoreQuotaExceeded(): boolean {
+  return _isQuotaExceeded;
+}
+
+export function onQuotaExceededChange(listener: (exceeded: boolean) => void): () => void {
+  quotaListeners.push(listener);
+  listener(_isQuotaExceeded);
+  return () => {
+    const idx = quotaListeners.indexOf(listener);
+    if (idx !== -1) quotaListeners.splice(idx, 1);
+  };
+}
+
+export function checkAndMarkQuotaError(error: unknown): boolean {
+  const errStr = String(error);
+  const errCode = (error as any)?.code;
+  if (
+    errCode === 'resource-exhausted' ||
+    errStr.includes('Quota exceeded') ||
+    errStr.includes('RESOURCE_EXHAUSTED') ||
+    errStr.includes('resource-exhausted')
+  ) {
+    if (!_isQuotaExceeded) {
+      _isQuotaExceeded = true;
+      quotaListeners.forEach((fn) => {
+        try {
+          fn(true);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    }
+    return true;
+  }
+  return false;
+}
+
 /**
  * Strips undefined values and deep copies objects so Firestore never rejects data
  */
@@ -49,6 +90,10 @@ function sanitizeForFirestore<T>(data: T): T {
 }
 
 export const FirebaseService = {
+  // Expose quota check
+  isQuotaExceeded: isFirestoreQuotaExceeded,
+  onQuotaExceededChange,
+
   // ----------------------------------------------------
   // System Settings
   // ----------------------------------------------------
@@ -61,17 +106,29 @@ export const FirebaseService = {
       }
       return null;
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] getSystemSettings: Quota exceeded, falling back to local data.');
+        return null;
+      }
       console.error('Error getting system settings from Firebase:', error);
       return null;
     }
   },
 
   async saveSystemSettings(settings: SystemSettings): Promise<void> {
+    if (_isQuotaExceeded) {
+      console.warn('[Firestore] saveSystemSettings: Quota exceeded, persisted locally.');
+      return;
+    }
     try {
       const docRef = doc(db, SETTINGS_COLLECTION, 'current');
       const cleanData = sanitizeForFirestore({ ...settings, updatedAt: new Date().toISOString() });
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] saveSystemSettings: Quota reached. Saved locally in LocalStorage.');
+        return;
+      }
       console.error('Error saving system settings to Firebase:', error);
       throw error;
     }
@@ -89,6 +146,10 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) {
+          console.warn('[Firestore] listenSystemSettings: Quota reached.');
+          return;
+        }
         console.error('Error listening to system settings:', error);
       }
     );
@@ -102,26 +163,46 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, USERS_COLLECTION));
       return snapshot.docs.map((d) => d.data() as User);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] getUsers: Quota reached, using local data.');
+        return [];
+      }
       console.error('Error fetching users from Firebase:', error);
       return [];
     }
   },
 
   async saveUser(user: User): Promise<void> {
+    if (_isQuotaExceeded) {
+      console.warn('[Firestore] saveUser: Quota reached. Saved locally.');
+      return;
+    }
     try {
       const docRef = doc(db, USERS_COLLECTION, user.id);
       const cleanData = sanitizeForFirestore(user);
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] saveUser: Quota reached. Saved locally in LocalStorage.');
+        return;
+      }
       console.error('Error saving user to Firebase:', error);
       throw error;
     }
   },
 
   async deleteUser(userId: string): Promise<void> {
+    if (_isQuotaExceeded) {
+      console.warn('[Firestore] deleteUser: Quota reached. Deleted locally.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, USERS_COLLECTION, userId));
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] deleteUser: Quota reached. Removed locally.');
+        return;
+      }
       console.error('Error deleting user from Firebase:', error);
       throw error;
     }
@@ -137,6 +218,10 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) {
+          console.warn('[Firestore] listenUsers: Quota reached.');
+          return;
+        }
         console.error('Error listening to users:', error);
       }
     );
@@ -150,26 +235,33 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, GROUPS_COLLECTION));
       return snapshot.docs.map((d) => d.data() as CommitteeGroup);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        return [];
+      }
       console.error('Error fetching groups from Firebase:', error);
       return [];
     }
   },
 
   async saveCommitteeGroup(group: CommitteeGroup): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       const docRef = doc(db, GROUPS_COLLECTION, group.id);
       const cleanData = sanitizeForFirestore(group);
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error saving group to Firebase:', error);
       throw error;
     }
   },
 
   async deleteCommitteeGroup(groupId: string): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       await deleteDoc(doc(db, GROUPS_COLLECTION, groupId));
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error deleting group from Firebase:', error);
       throw error;
     }
@@ -185,6 +277,7 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to groups:', error);
       }
     );
@@ -198,26 +291,31 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, TARGET_GROUPS_COLLECTION));
       return snapshot.docs.map((d) => d.data() as TargetPositionGroup);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return [];
       console.error('Error fetching target position groups from Firebase:', error);
       return [];
     }
   },
 
   async saveTargetPositionGroup(group: TargetPositionGroup): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       const docRef = doc(db, TARGET_GROUPS_COLLECTION, group.id);
       const cleanData = sanitizeForFirestore({ ...group, updatedAt: new Date().toISOString() });
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error saving target position group to Firebase:', error);
       throw error;
     }
   },
 
   async deleteTargetPositionGroup(groupId: string): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       await deleteDoc(doc(db, TARGET_GROUPS_COLLECTION, groupId));
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error deleting target position group from Firebase:', error);
       throw error;
     }
@@ -234,6 +332,7 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to target position groups:', error);
       }
     );
@@ -247,26 +346,31 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, TEMPLATES_COLLECTION));
       return snapshot.docs.map((d) => d.data() as FormTemplate);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return [];
       console.error('Error fetching templates from Firebase:', error);
       return [];
     }
   },
 
   async saveFormTemplate(template: FormTemplate): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       const docRef = doc(db, TEMPLATES_COLLECTION, template.id);
       const cleanData = sanitizeForFirestore(template);
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error saving template to Firebase:', error);
       throw error;
     }
   },
 
   async deleteFormTemplate(templateId: string): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       await deleteDoc(doc(db, TEMPLATES_COLLECTION, templateId));
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error deleting template from Firebase:', error);
       throw error;
     }
@@ -282,6 +386,7 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to templates:', error);
       }
     );
@@ -295,26 +400,37 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, SUBMISSIONS_COLLECTION));
       return snapshot.docs.map((d) => d.data() as EvaluationSubmission);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return [];
       console.error('Error fetching submissions from Firebase:', error);
       return [];
     }
   },
 
   async saveSubmission(submission: EvaluationSubmission): Promise<void> {
+    if (_isQuotaExceeded) {
+      console.warn('[Firestore] saveSubmission: Quota reached. Saved in LocalStorage.');
+      return;
+    }
     try {
       const docRef = doc(db, SUBMISSIONS_COLLECTION, submission.id);
       const cleanData = sanitizeForFirestore(submission);
       await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] saveSubmission: Quota reached. Saved in LocalStorage.');
+        return;
+      }
       console.error('Error saving submission to Firebase:', error);
       throw error;
     }
   },
 
   async deleteSubmission(submissionId: string): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       await deleteDoc(doc(db, SUBMISSIONS_COLLECTION, submissionId));
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error deleting submission from Firebase:', error);
       throw error;
     }
@@ -328,6 +444,7 @@ export const FirebaseService = {
         callback(subs);
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to submissions:', error);
       }
     );
@@ -348,17 +465,20 @@ export const FirebaseService = {
       }
       return null;
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return null;
       console.error('Error fetching grade thresholds from Firebase:', error);
       return null;
     }
   },
 
   async saveGradeThresholds(thresholds: GradeThreshold[]): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       const docRef = doc(db, THRESHOLDS_COLLECTION, 'current');
       const cleanData = sanitizeForFirestore({ thresholds, updatedAt: new Date().toISOString() });
       await setDoc(docRef, cleanData);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error saving thresholds to Firebase:', error);
     }
   },
@@ -376,6 +496,7 @@ export const FirebaseService = {
         }
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to thresholds:', error);
       }
     );
@@ -385,11 +506,13 @@ export const FirebaseService = {
   // Audit Logs
   // ----------------------------------------------------
   async addAuditLog(log: AuditLog): Promise<void> {
+    if (_isQuotaExceeded) return;
     try {
       const docRef = doc(db, LOGS_COLLECTION, log.id);
       const cleanData = sanitizeForFirestore(log);
       await setDoc(docRef, cleanData);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return;
       console.error('Error saving audit log to Firebase:', error);
     }
   },
@@ -399,6 +522,7 @@ export const FirebaseService = {
       const snapshot = await getDocs(collection(db, LOGS_COLLECTION));
       return snapshot.docs.map((d) => d.data() as AuditLog);
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) return [];
       console.error('Error fetching audit logs:', error);
       return [];
     }
@@ -413,6 +537,7 @@ export const FirebaseService = {
         callback(logs.slice(0, 100));
       },
       (error) => {
+        if (checkAndMarkQuotaError(error)) return;
         console.error('Error listening to audit logs:', error);
       }
     );
@@ -498,6 +623,10 @@ export const FirebaseService = {
 
       console.log('Firebase Firestore synchronized successfully across all collections!');
     } catch (error) {
+      if (checkAndMarkQuotaError(error)) {
+        console.warn('[Firestore] seedInitialData: Quota limit reached. Operating in LocalStorage mode.');
+        return;
+      }
       console.error('Error seeding Firebase data:', error);
       throw error;
     }

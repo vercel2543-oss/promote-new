@@ -120,6 +120,7 @@ export function sanitizeAndFixUsers(rawUsers: User[]): { sanitized: User[]; hasC
       ) {
         hasChanged = true;
       }
+      // Preserve existing uploaded avatar if present; only default to OFFICIAL_AVATARS if none set
       const existingAvatar = u.avatarUrl || u.avatar || OFFICIAL_AVATARS['user_admin_1'];
       u = {
         ...u,
@@ -137,7 +138,7 @@ export function sanitizeAndFixUsers(rawUsers: User[]): { sanitized: User[]; hasC
       };
     }
 
-    // 3. Set default official photo only if user has no avatar set
+    // 3. Set default official photo only if user has no avatar set at all
     if (OFFICIAL_AVATARS[u.id] && !u.avatarUrl && !u.avatar) {
       u.avatarUrl = OFFICIAL_AVATARS[u.id];
       u.avatar = OFFICIAL_AVATARS[u.id];
@@ -198,6 +199,7 @@ interface AppContextType {
   // Firebase status
   isFirebaseSyncing: boolean;
   isFirebaseConnected: boolean;
+  isFirestoreQuotaExceeded: boolean;
   syncAllToFirebase: () => Promise<void>;
   
   // Navigation / Active Context
@@ -270,6 +272,15 @@ const STORAGE_KEYS = {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isFirebaseSyncing, setIsFirebaseSyncing] = useState<boolean>(false);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
+  const [isFirestoreQuotaExceeded, setIsFirestoreQuotaExceeded] = useState<boolean>(() =>
+    FirebaseService.isQuotaExceeded()
+  );
+
+  useEffect(() => {
+    return FirebaseService.onQuotaExceededChange((exceeded) => {
+      setIsFirestoreQuotaExceeded(exceeded);
+    });
+  }, []);
 
   // 1. Users state - Always guarantee 56 users on any device / incognito
   const [users, setUsers] = useState<User[]>(() => {
@@ -430,9 +441,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const remoteUsers = await FirebaseService.getUsers();
         const remoteSettings = await FirebaseService.getSystemSettings();
 
-        // Seed ONLY if Firestore is completely empty on fresh install (no users AND no settings document)
+        // Seed ONLY if Firestore is completely empty on fresh install (no users AND no settings document) and quota is available
         const isCompletelyEmpty = (!remoteUsers || remoteUsers.length === 0) && !remoteSettings;
-        if (isCompletelyEmpty) {
+        if (isCompletelyEmpty && !FirebaseService.isQuotaExceeded()) {
           console.log('First-time database initialization: seeding complete initial dataset to Firebase Firestore...');
           await FirebaseService.seedInitialData(
             INITIAL_USERS,
@@ -443,49 +454,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             GRADE_THRESHOLDS,
             INITIAL_TARGET_POSITION_GROUPS
           );
-        } else if (!remoteUsers || remoteUsers.length === 0) {
-          console.log('Seeding initial users because remote users collection is empty...');
-          for (let i = 0; i < INITIAL_USERS.length; i += 20) {
-            const chunk = INITIAL_USERS.slice(i, i + 20);
-            await Promise.all(chunk.map((u) => FirebaseService.saveUser(u)));
-          }
-        } else {
-          // Check if remote roles need synchronization for Pratchya and Rannaphat
-          const pratchyaRemote = remoteUsers.find((u) => u.name.includes('ปรัชญา'));
-          const rannaphatRemote = remoteUsers.find((u) => u.name.includes('รัณย์ณภัทร'));
-          if ((pratchyaRemote && pratchyaRemote.role === 'admin') || (rannaphatRemote && rannaphatRemote.role !== 'admin')) {
-            console.log('Synchronizing swapped roles to Firebase Firestore...');
-            if (pratchyaRemote) {
-              await FirebaseService.saveUser({
-                ...pratchyaRemote,
-                role: 'evaluator',
-                position: 'ผู้อำนวยการชำนาญการพิเศษ (ประธานกรรมการอำนวยการ / คณะกรรมการ)',
-                avatarUrl: OFFICIAL_AVATARS['evaluator_director'],
-                avatar: OFFICIAL_AVATARS['evaluator_director'],
-              });
-            }
-            if (rannaphatRemote) {
-              await FirebaseService.saveUser({
-                ...rannaphatRemote,
-                role: 'admin',
-                position: 'ครูชำนาญการ (ผู้ดูแลระบบ / Admin & กรรมการลงทะเบียนและรวบรวมคะแนน)',
-                avatarUrl: OFFICIAL_AVATARS['user_admin_1'],
-                avatar: OFFICIAL_AVATARS['user_admin_1'],
-              });
-            }
-          }
-
-          // Check if any committee or admin needs official avatar default on Firestore if empty
-          for (const remoteUser of remoteUsers) {
-            if (OFFICIAL_AVATARS[remoteUser.id] && !remoteUser.avatarUrl && !remoteUser.avatar) {
-              console.log(`Setting default official avatar for ${remoteUser.name} on Firestore...`);
-              await FirebaseService.saveUser({
-                ...remoteUser,
-                avatarUrl: OFFICIAL_AVATARS[remoteUser.id],
-                avatar: OFFICIAL_AVATARS[remoteUser.id],
-              });
-            }
-          }
         }
 
         // Setup real-time listeners for all models across all devices (PC, Android, iOS)
@@ -507,6 +475,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (remoteUsers && remoteUsers.length > 0) {
             const { sanitized } = sanitizeAndFixUsers(remoteUsers);
             setUsers(sanitized);
+            // Synchronize active currentUser with latest remote snapshot
+            setCurrentUser((current) => {
+              if (!current || !current.id) return current;
+              const matched = sanitized.find((u) => u.id === current.id);
+              if (matched) {
+                const isDifferent =
+                  matched.avatar !== current.avatar ||
+                  matched.avatarUrl !== current.avatarUrl ||
+                  matched.name !== current.name ||
+                  matched.role !== current.role ||
+                  matched.position !== current.position;
+                return isDifferent ? matched : current;
+              }
+              return current;
+            });
           }
         });
 
@@ -518,82 +501,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         unsubTargetGroups = FirebaseService.listenTargetPositionGroups((remoteTargetGroups) => {
           if (remoteTargetGroups && remoteTargetGroups.length > 0) {
-            const needsUpgrade =
-              remoteTargetGroups.length < 3 ||
-              remoteTargetGroups.some(
-                (g) =>
-                  g.name.includes('กลุ่มที่ 1: ลูกจ้างชั่วคราว') ||
-                  g.name.includes('กลุ่มที่ 2: ลูกจ้างชั่วคราว') ||
-                  g.code?.includes('(ครูผู้ช่วย)') ||
-                  g.code?.includes('(จ้างเหมาบริการ)')
-              );
-            if (needsUpgrade) {
-              console.log('Upgrading target position groups to include Group 3 and updated clean names in Firebase...');
-              INITIAL_TARGET_POSITION_GROUPS.forEach((tg) => {
-                FirebaseService.saveTargetPositionGroup(tg).catch(console.error);
-              });
-              setTargetPositionGroups(INITIAL_TARGET_POSITION_GROUPS);
-            } else {
-              setTargetPositionGroups(remoteTargetGroups);
-            }
+            setTargetPositionGroups(remoteTargetGroups);
           } else {
-            INITIAL_TARGET_POSITION_GROUPS.forEach((tg) => {
-              FirebaseService.saveTargetPositionGroup(tg).catch(console.error);
-            });
             setTargetPositionGroups(INITIAL_TARGET_POSITION_GROUPS);
           }
         });
 
         unsubTemplates = FirebaseService.listenFormTemplates((remoteTemplates) => {
           if (remoteTemplates && remoteTemplates.length > 0) {
-            let updatedList = [...remoteTemplates];
-            let modified = false;
-
-            const hasGovTeacher = updatedList.some((t) => t.id === 'form_government_employee_teacher');
-            if (!hasGovTeacher) {
-              const govTemplate = FORM_TEMPLATES.find((t) => t.id === 'form_government_employee_teacher');
-              if (govTemplate) {
-                FirebaseService.saveFormTemplate(govTemplate).catch(console.error);
-                updatedList.push(govTemplate);
-                modified = true;
-              }
-            }
-
-            const hasClerical = updatedList.some((t) => t.id === 'form_support_clerical');
-            if (!hasClerical) {
-              const clericalTemplate = FORM_TEMPLATES.find((t) => t.id === 'form_support_clerical');
-              if (clericalTemplate) {
-                FirebaseService.saveFormTemplate(clericalTemplate).catch(console.error);
-                updatedList.push(clericalTemplate);
-                modified = true;
-              }
-            }
-
-            setFormTemplates(updatedList);
+            setFormTemplates(remoteTemplates);
           }
         });
 
         unsubSubs = FirebaseService.listenSubmissions((remoteSubs) => {
           if (remoteSubs) {
-            // Deduplicate remote submissions by evaluateeId and evaluatorId, keeping latest submittedAt
+            // Deduplicate remote submissions by evaluateeId and evaluatorId in memory, keeping latest submittedAt
             const subMap = new Map<string, EvaluationSubmission>();
             const sorted = [...remoteSubs].sort(
               (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
             );
-            const duplicatesToDelete: string[] = [];
 
             sorted.forEach((sub) => {
               const key = `${sub.evaluateeId}_${sub.evaluatorId}`;
-              const prev = subMap.get(key);
-              if (prev && prev.id !== sub.id) {
-                duplicatesToDelete.push(prev.id);
-              }
               subMap.set(key, sub);
-            });
-
-            // Clean up duplicate documents from Firestore
-            duplicatesToDelete.forEach((dupId) => {
-              FirebaseService.deleteSubmission(dupId).catch(console.error);
             });
 
             setSubmissions(Array.from(subMap.values()));
@@ -636,44 +566,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Persistence to local storage for fast instant load
+  const safeSetItem = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      // QuotaExceededError or security block: graceful fallback
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+    safeSetItem(STORAGE_KEYS.CURRENT_USER, currentUser);
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.IS_AUTH, JSON.stringify(isAuthenticated));
+    safeSetItem(STORAGE_KEYS.IS_AUTH, isAuthenticated);
   }, [isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    safeSetItem(STORAGE_KEYS.USERS, users);
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.GROUPS, JSON.stringify(committeeGroups));
+    safeSetItem(STORAGE_KEYS.GROUPS, committeeGroups);
   }, [committeeGroups]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TARGET_GROUPS, JSON.stringify(targetPositionGroups));
+    safeSetItem(STORAGE_KEYS.TARGET_GROUPS, targetPositionGroups);
   }, [targetPositionGroups]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(formTemplates));
+    safeSetItem(STORAGE_KEYS.TEMPLATES, formTemplates);
   }, [formTemplates]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(submissions));
+    safeSetItem(STORAGE_KEYS.SUBMISSIONS, submissions);
   }, [submissions]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.THRESHOLDS, JSON.stringify(gradeThresholds));
+    safeSetItem(STORAGE_KEYS.THRESHOLDS, gradeThresholds);
   }, [gradeThresholds]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(auditLogs));
+    safeSetItem(STORAGE_KEYS.AUDIT_LOGS, auditLogs);
   }, [auditLogs]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(systemSettings));
+    safeSetItem(STORAGE_KEYS.SETTINGS, systemSettings);
   }, [systemSettings]);
 
   // Compute Aggregated Results for all Evaluatees
@@ -1313,6 +1251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         aggregatedResults,
         isFirebaseSyncing,
         isFirebaseConnected,
+        isFirestoreQuotaExceeded,
         syncAllToFirebase,
         exportFullBackup,
         importFullBackup,

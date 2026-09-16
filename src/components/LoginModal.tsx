@@ -77,15 +77,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white p-5 sm:p-6 relative">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-inner">
-                <Award className="w-7 h-7 text-amber-300" />
+              <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-white border border-white/20 shadow-inner overflow-hidden p-1">
+                {systemSettings?.logoUrl ? (
+                  <img
+                    src={systemSettings.logoUrl}
+                    alt={systemSettings.appName || 'Logo'}
+                    className="w-full h-full object-contain filter drop-shadow-xs"
+                  />
+                ) : (
+                  <Award className="w-7 h-7 text-amber-300" />
+                )}
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                  ระบบประเมินการปฏิบัติงานบุคลากร
+                  {systemSettings?.appName || 'ระบบประเมินการปฏิบัติงานบุคลากร'}
                 </h3>
                 <p className="text-xs text-blue-100 mt-0.5">
-                  โรงเรียนศึกษาพิเศษชัยนาท (Performance Evaluation System)
+                  {systemSettings?.schoolName || 'โรงเรียนศึกษาพิเศษชัยนาท'} (Performance Evaluation System)
                 </p>
               </div>
             </div>

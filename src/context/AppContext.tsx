@@ -244,33 +244,47 @@ interface AppContextType {
   // Global Settings
   updateGradeThresholds: (thresholds: GradeThreshold[]) => void;
   resetAllDataToDefault: () => void;
+
+  // Backup & Recovery
+  exportFullBackup: () => void;
+  importFullBackup: (jsonData: any) => Promise<{ success: boolean; message: string }>;
+  refreshFromFirebase: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  CURRENT_USER: 'pes_current_user_v9',
-  IS_AUTH: 'pes_is_auth_v9',
-  USERS: 'pes_users_v9',
-  GROUPS: 'pes_groups_v9',
-  TARGET_GROUPS: 'pes_target_groups_v9',
-  TEMPLATES: 'pes_templates_v9',
-  SUBMISSIONS: 'pes_submissions_v9',
-  THRESHOLDS: 'pes_thresholds_v9',
-  AUDIT_LOGS: 'pes_audit_logs_v9',
-  SETTINGS: 'pes_settings_v9',
-  FIREBASE_INITIALIZED: 'pes_firebase_initialized_v9',
+  CURRENT_USER: 'pes_current_user_v10',
+  IS_AUTH: 'pes_is_auth_v10',
+  USERS: 'pes_users_v10',
+  GROUPS: 'pes_groups_v10',
+  TARGET_GROUPS: 'pes_target_groups_v10',
+  TEMPLATES: 'pes_templates_v10',
+  SUBMISSIONS: 'pes_submissions_v10',
+  THRESHOLDS: 'pes_thresholds_v10',
+  AUDIT_LOGS: 'pes_audit_logs_v10',
+  SETTINGS: 'pes_settings_v10',
+  FIREBASE_INITIALIZED: 'pes_firebase_initialized_v10',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isFirebaseSyncing, setIsFirebaseSyncing] = useState<boolean>(false);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
 
-  // 1. Users state
+  // 1. Users state - Always guarantee 56 users on any device / incognito
   const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-    const parsed = saved ? JSON.parse(saved) : INITIAL_USERS;
-    return sanitizeAndFixUsers(parsed).sanitized;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 56) {
+          return sanitizeAndFixUsers(parsed).sanitized;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse local users:', e);
+    }
+    return sanitizeAndFixUsers(INITIAL_USERS).sanitized;
   });
 
   // 1.1 System Settings state
@@ -416,9 +430,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const remoteUsers = await FirebaseService.getUsers();
         const remoteSettings = await FirebaseService.getSystemSettings();
 
-        // If Firestore is empty or has an older partial dataset (< 30 staff members)
-        if (!remoteSettings || !remoteUsers || remoteUsers.length < 30) {
-          console.log('Syncing and seeding complete initial dataset (30 evaluatees + committees) to Firebase Firestore...');
+        // If Firestore is empty or has an older partial dataset (< 56 accounts)
+        if (!remoteSettings || !remoteUsers || remoteUsers.length < 56) {
+          console.log('Syncing and seeding complete initial dataset (56 accounts / 48 evaluatees) to Firebase Firestore...');
           await FirebaseService.seedInitialData(
             INITIAL_USERS,
             INITIAL_COMMITTEE_GROUPS,
@@ -1120,6 +1134,139 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAudit('RESET_SYSTEM', 'รีเซ็ตข้อมูลระบบกลับสู่ค่าเริ่มต้นจากโรงงาน');
   };
 
+  // Full System Backup: Exports all 56 users, 48 evaluatees, leave statistics, submissions, etc.
+  const exportFullBackup = () => {
+    const backupData = {
+      appName: systemSettings.appName || 'ระบบประเมินผลการปฏิบัติงาน',
+      version: '3.0.0',
+      exportedAt: new Date().toISOString(),
+      firebaseProject: 'form-promote2',
+      statistics: {
+        totalUsers: users.length,
+        staffCount: users.filter((u) => u.role === 'staff').length,
+        evaluatorCount: users.filter((u) => u.role === 'evaluator').length,
+        adminCount: users.filter((u) => u.role === 'admin').length,
+        committeeGroupsCount: committeeGroups.length,
+        targetPositionGroupsCount: targetPositionGroups.length,
+        submissionsCount: submissions.length,
+        formTemplatesCount: formTemplates.length,
+      },
+      users,
+      committeeGroups,
+      targetPositionGroups,
+      submissions,
+      formTemplates,
+      gradeThresholds,
+      systemSettings,
+      auditLogs,
+    };
+
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `pes-backup-56users-48evaluatees-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    logAudit('EXPORT_BACKUP', `ส่งออกไฟล์สำรองข้อมูลระบบทั้งหมด (${users.length} ผู้ใช้งาน, ${submissions.length} ผลการประเมิน)`);
+  };
+
+  // Import Full Backup: Restores state and writes to Firebase Firestore
+  const importFullBackup = async (jsonData: any): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (!jsonData || typeof jsonData !== 'object') {
+        return { success: false, message: 'โครงสร้างไฟล์สำรองข้อมูลไม่ถูกต้อง' };
+      }
+      if (!Array.isArray(jsonData.users) || jsonData.users.length === 0) {
+        return { success: false, message: 'ไม่พบบัญชีผู้ใช้งานในไฟล์สำรองข้อมูล' };
+      }
+
+      const { sanitized } = sanitizeAndFixUsers(jsonData.users);
+      setUsers(sanitized);
+
+      if (Array.isArray(jsonData.committeeGroups) && jsonData.committeeGroups.length > 0) {
+        setCommitteeGroups(jsonData.committeeGroups);
+      }
+      if (Array.isArray(jsonData.targetPositionGroups) && jsonData.targetPositionGroups.length > 0) {
+        setTargetPositionGroups(jsonData.targetPositionGroups);
+      }
+      if (Array.isArray(jsonData.submissions)) {
+        setSubmissions(jsonData.submissions);
+      }
+      if (Array.isArray(jsonData.formTemplates) && jsonData.formTemplates.length > 0) {
+        setFormTemplates(jsonData.formTemplates);
+      }
+      if (Array.isArray(jsonData.gradeThresholds) && jsonData.gradeThresholds.length > 0) {
+        setGradeThresholds(jsonData.gradeThresholds);
+      }
+      if (jsonData.systemSettings && typeof jsonData.systemSettings === 'object') {
+        setSystemSettings(jsonData.systemSettings);
+      }
+
+      setIsFirebaseSyncing(true);
+      await FirebaseService.seedInitialData(
+        sanitized,
+        jsonData.committeeGroups || committeeGroups,
+        jsonData.formTemplates || formTemplates,
+        jsonData.submissions || submissions,
+        jsonData.systemSettings || systemSettings,
+        jsonData.gradeThresholds || gradeThresholds,
+        jsonData.targetPositionGroups || targetPositionGroups
+      );
+      setIsFirebaseSyncing(false);
+
+      logAudit('IMPORT_BACKUP', `กู้คืนข้อมูลสำเร็จ: ${sanitized.length} ผู้ใช้งาน, ${(jsonData.submissions || []).length} ผลการประเมิน`);
+      return {
+        success: true,
+        message: `กู้คืนข้อมูลสำเร็จ (${sanitized.length} ผู้ใช้งาน, ${(jsonData.submissions || []).length} ผลการประเมิน) และซิงค์ขึ้น Firebase Firestore เรียบร้อยแล้ว`,
+      };
+    } catch (err: any) {
+      setIsFirebaseSyncing(false);
+      console.error('Import backup failed:', err);
+      return { success: false, message: `เกิดข้อผิดพลาดในการกู้คืน: ${err.message || String(err)}` };
+    }
+  };
+
+  // Pull latest data directly from Firebase Firestore
+  const refreshFromFirebase = async (): Promise<boolean> => {
+    try {
+      setIsFirebaseSyncing(true);
+      const [remUsers, remGroups, remTargetGroups, remTemplates, remSubs, remSettings, remThresholds] = await Promise.all([
+        FirebaseService.getUsers(),
+        FirebaseService.getCommitteeGroups(),
+        FirebaseService.getTargetPositionGroups(),
+        FirebaseService.getFormTemplates(),
+        FirebaseService.getSubmissions(),
+        FirebaseService.getSystemSettings(),
+        FirebaseService.getGradeThresholds(),
+      ]);
+
+      if (remUsers && remUsers.length > 0) {
+        const { sanitized } = sanitizeAndFixUsers(remUsers);
+        setUsers(sanitized);
+      }
+      if (remGroups && remGroups.length > 0) setCommitteeGroups(remGroups);
+      if (remTargetGroups && remTargetGroups.length > 0) setTargetPositionGroups(remTargetGroups);
+      if (remTemplates && remTemplates.length > 0) setFormTemplates(remTemplates);
+      if (remSubs) setSubmissions(remSubs);
+      if (remSettings) setSystemSettings(remSettings);
+      if (remThresholds && remThresholds.length > 0) setGradeThresholds(remThresholds);
+
+      setIsFirebaseSyncing(false);
+      logAudit('REFRESH_FIREBASE', 'ดึงข้อมูลล่าสุดจาก Firebase Firestore เพื่อให้ข้อมูลตรงกันทุกอุปกรณ์');
+      return true;
+    } catch (err) {
+      setIsFirebaseSyncing(false);
+      console.error('Failed to refresh from Firebase:', err);
+      return false;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1143,6 +1290,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFirebaseSyncing,
         isFirebaseConnected,
         syncAllToFirebase,
+        exportFullBackup,
+        importFullBackup,
+        refreshFromFirebase,
         activeView,
         setActiveView,
         selectedFormId,

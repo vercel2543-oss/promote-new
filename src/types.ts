@@ -78,6 +78,8 @@ export type GradeLevel =
   | 'ระดับดีเด่น'
   | 'ระดับดี'
   | 'ระดับปกติ'
+  | 'ระดับพอใช้'
+  | 'ระดับต้องปรับปรุง'
   | 'งดจ้างต่อ'
   | 'ยอดเยี่ยม'
   | 'ดีมาก'
@@ -126,6 +128,7 @@ export interface DetailedComments {
 export interface RecommendationSummary {
   decision: 'continue' | 'terminate'; // จ้างต่อ / ยุติการจ้าง
   terminationReason?: string; // เหตุผลกรณีเห็นควรให้ยุติการจ้าง
+  reason?: string; // ข้อคิดเห็นหรือเหตุผลประกอบ
   supervisorName?: string;
   supervisorPosition?: string;
   supervisorSignatureUrl?: string;

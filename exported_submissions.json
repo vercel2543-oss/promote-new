@@ -1,0 +1,638 @@
+[
+  {
+    "signatureDataUrl": "data:image/png;base64,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",
+    "recommendation": {
+      "reason": "",
+      "supervisorSignedAt": "2026-08-28T03:50:18.357Z",
+      "supervisorPosition": "รองผู้อำนวยการสถานศึกษา (ประธานกรรมการ ชุดที่ 1)",
+      "supervisorName": "นางสาวอรวรรณ พงษ์ศิริ",
+      "decision": "continue"
+    },
+    "evaluatorName": "นางสาวอรวรรณ พงษ์ศิริ",
+    "maxScore": 100,
+    "startDate": "2024-05-15",
+    "comments": {
+      "general": "",
+      "improvements": "การจัดเรียงลำดับในการทำงาน",
+      "distinctiveCapabilities": "ความเสียสละ รับผิดชอบในงานที่ทำได้ดี มั่นใจในตนเอง สนุกสนานในการทำงาน",
+      "improvementsAndTraining": "การจัดเรียงลำดับในการทำงาน",
+      "improvementsSupervisorComment": "",
+      "strengths": "ความเสียสละ รับผิดชอบในงานที่ทำได้ดี มั่นใจในตนเอง สนุกสนานในการทำงาน",
+      "distinctiveCapabilitiesSupervisorComment": "",
+      "assignedWorkSupervisorComment": "",
+      "assignedWorkAndSuccess": "ประจำชั้น งานอนามัย"
+    },
+    "formTitle": "แบบประเมินผลการปฏิบัติงานพนักงานราชการทั่วไป ตำแหน่งครูผู้สอน โรงเรียนศึกษาพิเศษชัยนาท",
+    "evaluateeDepartment": "โรงเรียนศึกษาพิเศษชัยนาท",
+    "isDraft": false,
+    "percentage": 90,
+    "leaveStats": {
+      "ordinationOrHajj": {
+        "times": 0,
+        "days": 0
+      },
+      "personal": {
+        "days": 1,
+        "times": 1
+      },
+      "late": {
+        "days": 0,
+        "times": 0
+      },
+      "notes": "",
+      "other": {
+        "times": 0,
+        "days": 0
+      },
+      "sick": {
+        "times": 1,
+        "days": 1
+      },
+      "maternity": {
+        "days": 0,
+        "times": 0
+      },
+      "absent": {
+        "times": 0,
+        "days": 0
+      }
+    },
+    "groupId": "group_3",
+    "scores": {
+      "gov_core_2": 9,
+      "gov_core_5": 10,
+      "gov_spec_1": 8,
+      "gov_core_4": 20,
+      "gov_core_3": 18,
+      "gov_core_1": 17,
+      "gov_spec_2": 8
+    },
+    "formId": "form_government_employee_teacher",
+    "totalScore": 90,
+    "positionNumber": "พ319434",
+    "evaluatorId": "evaluator_1",
+    "evaluateePosition": "พนักงานราชการทั่วไป ตำแหน่งครูผู้สอน",
+    "evaluateeName": "นางสาวปัทมา คุ้มศรี",
+    "categoryScores": {
+      "cat_gov_specific": {
+        "scored": 16,
+        "max": 20,
+        "percentage": 80
+      },
+      "cat_gov_core": {
+        "scored": 74,
+        "max": 80,
+        "percentage": 92.5
+      }
+    },
+    "submittedAt": "2026-08-28T03:50:18.357Z",
+    "id": "sub_1787889018357",
+    "evaluateeId": "staff_1787590131121",
+    "evaluatorPosition": "รองผู้อำนวยการสถานศึกษา (ประธานกรรมการ ชุดที่ 1)",
+    "grade": "ระดับดีเด่น"
+  },
+  {
+    "positionNumber": "พ319753",
+    "percentage": 80,
+    "startDate": "2024-05-15",
+    "groupId": "group_3",
+    "evaluateeDepartment": "โรงเรียนศึกษาพิเศษชัยนาท",
+    "signatureDataUrl": "data:image/png;base64,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",
+    "formTitle": "แบบประเมินผลการปฏิบัติงานพนักงานราชการทั่วไป ตำแหน่งครูผู้สอน โรงเรียนศึกษาพิเศษชัยนาท",
+    "categoryScores": {
+      "cat_gov_core": {
+        "percentage": 81.25,
+        "scored": 65,
+        "max": 80
+      },
+      "cat_gov_specific": {
+        "scored": 15,
+        "percentage": 75,
+        "max": 20
+      }
+    },
+    "evaluatorName": "นางสาวอรวรรณ พงษ์ศิริ",
+    "evaluatorId": "evaluator_1",
+    "evaluateePosition": "พนักงานราชการทั่วไป ตำแหน่งครูผู้สอน",
+    "formId": "form_government_employee_teacher",
+    "evaluateeName": "นางสาวปัทมวรรณ ไหล่แท้",
+    "recommendation": {
+      "supervisorSignedAt": "2026-08-28T04:03:56.014Z",
+      "decision": "continue",
+      "supervisorName": "นางสาวอรวรรณ พงษ์ศิริ",
+      "reason": "",
+      "supervisorPosition": "รองผู้อำนวยการสถานศึกษา (ประธานกรรมการ ชุดที่ 1)"
+    },
+    "maxScore": 100,
+    "scores": {
+      "gov_core_3": 17,
+      "gov_spec_2": 8,
+      "gov_core_1": 16,
+      "gov_core_5": 7,
+      "gov_core_2": 7,
+      "gov_spec_1": 7,
+      "gov_core_4": 18
+    },
+    "totalScore": 80,
+    "evaluateeId": "staff_2",
+    "id": "sub_1787889836015",
+    "grade": "ระดับดี",
+    "evaluatorPosition": "รองผู้อำนวยการสถานศึกษา (ประธานกรรมการ ชุดที่ 1)",
+    "comments": {
+      "improvements": "",
+      "distinctiveCapabilities": "",
+      "strengths": "",
+      "general": "",
+      "assignedWorkSupervisorComment": "",
+      "improvementsAndTraining": "",
+      "distinctiveCapabilitiesSupervisorComment": "",
+      "assignedWorkAndSuccess": "งานอาชีพ",
+      "improvementsSupervisorComment": ""
+    },
+    "leaveStats": {
+      "personal": {
+        "days": 4,
+        "times": 4
+      },
+      "absent": {
+        "days": 0,
+        "times": 0
+      },
+      "other": {
+        "days": 0,
+        "times": 0
+      },
+      "late": {
+        "days": 0,
+        "times": 0
+      },
+      "maternity": {
+        "times": 0,
+        "days": 0
+      },
+      "ordinationOrHajj": {
+        "times": 0,
+        "days": 0
+      },
+      "notes": "",
+      "sick": {
+        "times": 1,
+        "days": 1
+      }
+    },
+    "isDraft": false,
+    "submittedAt": "2026-08-28T04:03:56.015Z"
+  },
+  {
+    "evaluateePosition": "พนักงานราชการทั่วไป ตำแหน่งครูผู้สอน",
+    "evaluateeDepartment": "โรงเรียนศึกษาพิเศษชัยนาท",
+    "percentage": 92,
+    "id": "sub_1787890856655",
+    "comments": {
+      "improvements": "การพัฒนาตนเองด้านความมั่นใจ และรอบคอมทุกครั้ง",
+      "distinctiveCapabilities": "เป็นผู้มีความรู้ความสามารถในการทำงานทุกอบ่างที่ได้รับมอบหมาย",
+      "strengths": "เป็นผู้มีความรู้ความสามารถในการทำงานทุกอบ่างที่ได้รับมอบหมาย",
+      "general": "",
+      "assignedWorkSupervisorComment": "",
+      "assignedWorkAndSuccess": "สามารถดำเนินงานได้สำเร็จผลตามงานที่ได้รับมอบหมายดีเยี่ยม",
+      "improvementsAndTraining": "การพัฒนาตนเองด้านความมั่นใจ และรอบคอมทุกครั้ง",
+      "distinctiveCapabilitiesSupervisorComment": "",
+      "improvementsSupervisorComment": ""
+    },
+    "categoryScores": {
+      "cat_gov_specific": {
+        "scored": 18,
+        "max": 20,
+        "percentage": 90
+      },
+      "cat_gov_core": {
+        "max": 80,
+        "scored": 74,
+        "percentage": 92.5
+      }
+    },
+    "isDraft": false,
+    "positionNumber": "พ319434",
+    "evaluatorPosition": "รองผู้อำนวยการชำนาญการ (ประธานกรรมการ ชุดที่ 2)",
+    "evaluateeName": "นางสาวปัทมา คุ้มศรี",
+    "maxScore": 100,
+    "signatureDataUrl": "data:image/png;base64,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hU0QAAEQyAyBuE+5zBQAhoBAqwn0DU6cIGlBn1pvzu3EzSQkch6kIatXt7rsyB8EQAAEwhJozhMyrDUIBwJtTsDnA24xSsWeC46mW/917Xl8cTUGRkQBARDIDAEIjsycChjSSQRogq2XDEPz7aiZy2nU8VM/bGjGt/ZPj/xDJ5UdZQEBEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEACBzibw/0io+Ohk9sB5AAAAAElFTkSuQmCC",
+    "startDate": "2024-05-15",
+    "evaluatorId": "evaluator_4",
+    "groupId": "group_3",
+    "evaluatorName": "นางสาวนุชจรินทร์ โพธิ์เงิน",
+    "evaluateeId": "staff_1787590131121",
+    "scores": {
+      "gov_spec_1": 9,
+      "gov_core_4": 19,
+      "gov_core_2": 9,
+      "gov_core_5": 10,
+      "gov_core_1": 18,
+      "gov_spec_2": 9,
+      "gov_core_3": 18
+    },
+    "formTitle": "แบบประเมินผลการปฏิบัติงานพนักงานราชการทั่วไป ตำแหน่งครูผู้สอน โรงเรียนศึกษาพิเศษชัยนาท",
+    "formId": "form_government_employee_teacher",
+    "totalScore": 92,
+    "grade": "ระดับดีเด่น",
+    "leaveStats": {
+      "notes": "",
+      "late": {
+        "times": 0,
+        "days": 0
+      },
+      "absent": {
+        "days": 0,
+        "times": 0
+      },
+      "ordinationOrHajj": {
+        "days": 0,
+        "times": 0
+      },
+      "maternity": {
+        "times": 0,
+        "days": 0
+      },
+      "personal": {
+        "days": 1,
+        "times": 1
+      },
+      "other": {
+        "days": 0,
+        "times": 0
+      },
+      "sick": {
+        "days": 1,
+        "times": 1
+      }
+    },
+    "submittedAt": "2026-08-28T04:20:56.655Z",
+    "recommendation": {
+      "reason": "สามารถเป็นแบบอย่างให้กับบุคลากรอื่นได้",
+      "supervisorSignedAt": "2026-08-28T04:20:56.655Z",
+      "supervisorPosition": "รองผู้อำนวยการชำนาญการ (ประธานกรรมการ ชุดที่ 2)",
+      "supervisorName": "นางสาวนุชจรินทร์ โพธิ์เงิน",
+      "decision": "continue"
+    }
+  },
+  {
+    "totalScore": 99,
+    "formTitle": "แบบประเมินผลการปฏิบัติงานลูกจ้างชั่วคราว เพื่อประกอบการพิจารณาจ้างต่อ/งดจ้างต่อ (ตำแหน่งครูผู้ช่วย)",
+    "recommendation": {
+      "reason": "",
+      "supervisorSignedAt": "2026-09-16T09:30:00.000Z",
+      "decision": "continue",
+      "supervisorName": "นางสาวอรวรรณ พงษ์ศิริ",
+      "supervisorPosition": "รองผู้อำนวยการชำนาญการพิเศษ"
+    },
+    "leaveStats": {
+      "late": {
+        "days": 0,
+        "times": 0
+      },
+      "notes": "มาปฏิบัติงานตรงเวลา มีความรับผิดชอบและอุทิศเวลาให้แก่ทางราชการ",
+      "personal": {
+        "times": 0,
+        "days": 0
+      },
+      "maternity": {
+        "times": 0,
+        "days": 0
+      },
+      "other": {
+        "days": 0,
+        "times": 0
+      },
+      "sick": {
+        "days": 1,
+        "times": 1
+      },
+      "ordinationOrHajj": {
+        "days": 0,
+        "times": 0
+      },
+      "absent": {
+        "days": 0,
+        "times": 0
+      }
+    },
+    "signatureDataUrl": "data:image/png;base64,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QokQQCBHAhIILMm4CP8JElP1zdzEWwUQ9ovZGvlfcl0aYhPMmODGfKc5rldpjz/+u6fkXD/Zq/Nxns0JEHBszo2jEEBgKATM/XFtPMSeg3vUsYPHBqnYEmy8JuUJPWWxmWCjVZ0ag0SDMSGrq9UVpT52tNUx0X2tgploWtYRWE+Afq/1ZNiOAAJDL2DPuzF22Y74wYZ9quXa0yJBsCHNB+0EG9EuE1OtxqO1QbBRc3Xt1NG71h2A2icKTpsTgeCXmJMKU00EEMiPgAyqXJGugC2mxo0xDqW+/5E1PmWmKY/OvLnxhF7rXbW4QCMurXkLbJrZROPyYBsC7Qj0/X++dgrPsQgggEArAXlp298E++V5hj5+RidnD9WDg6Zgw8yXMbPpsiVpFTHBFsFGHy8+p64LEHDwQ0AAgcwKVBZnftmrnD2Vt7etV9/m8dWCcmbC59Nq+4q+pRPjI0zQETeg0zwma2Ya7cQ5wmVnDYH0AgwaTW/GEQgggEAiAXk65KwMWo0bM2Em87okUSYJE3lBhXlDrDkkOp15wmxIhkDXBAg4ukZLxgggkFeBscnyl6SP5IPR+vdiHAmBRlSd9UER2HS/4aBUgHIggAACrQTs2ThlFMdrS/Ol81qlb3effT4/L4k0pHuHf299EBbyKMAYjjxedeqMQE4FHHnfhgkIulH9scnZVTMo1J79s34ex3meYKMb4uQ5bAJE3MN2xSgvAgikFmh+dFRaHN54fbd6+mAldWaRAySAqUmQ0fTHmxmvKeMq/HeXRA5jFYHcCRBw5O6SU2EE8ikQnQTLKEhQUJOgIPVYtvGJ2RXlOPX5PaKaG71ALZqedQTyIkDAkZcrTT0RQEDJS9KkRUOPRSmkH+TVglb/J3Njfff8auGvv3t0+u+jaaSV5GU59gJ/qvRoArPuqKcq86Vr43axDYG8CxBw5P0XQP0RyKFA7MDOTTqYJ092VN1f+v7R/U1Byiaz5DAEMilAwJHJy0qlEEBgIwF5dPWM/AO4faN0cftNkCGtGV9eWih9KG4/2xBAoFmAgKPZhC0IIJAjgdGJclX+IQwN+nQcMw16+J9HMzZDZit9Tmb1fFuOeKgqAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIAAAggggAACCCCAAAIIIIDAwAn8P6wDZN8YW7BEAAAAAElFTkSuQmCC",
+    "evaluatorName": "นางสาวอรวรรณ พงษ์ศิริ",
+    "aiFeedback": {
+      "strengthsSummary": "มีความเชี่ยวชาญการออกแบบการสอนสำหรับเด็กพิเศษและการปรับใช้สื่อดิจิทัล",
+      "developmentPlan": "1. เข้าร่วมประกวดสื่อการสอนระดับสำนักบริหารงานการศึกษาพิเศษ\n2. จัดทำนวัตกรรมการสอน 1 ชิ้น",
+      "overallComment": "ผลการปฏิบัติงานอยู่ในเกณฑ์ระดับดีเด่น สมควรได้รับการส่งเสริมและพิจารณาจ้างต่อเนื่อง",
+      "improvementAreas": "การจัดทำวิจัยปฏิบัติการในชั้นเรียน (Action Research) และการบันทึกพัฒนาการรายบุคคล"
+    },
+    "isDraft": false,
+    "startDate": "2024-05-15",
+    "groupId": "group_1",
+    "maxScore": 100,
+    "submittedAt": "2026-09-16T09:30:00.000Z",
+    "positionNumber": "พ-1042",
+    "evaluateeId": "staff_1",
+    "grade": "ระดับดีเด่น",
+    "evaluatorPosition": "รองผู้อำนวยการชำนาญการพิเศษ (ประธานกรรมการ ชุดที่ 1)",
+    "supervisorMentorName": "นางพนิดา สมบูรณ์ชัย (ครูชำนาญการพิเศษ)",
+    "percentage": 99,
+    "comments": {
+      "improvements": "เพิ่มการบันทึกแผน IEP และพัฒนาการรายบุคคลอย่างต่อเนื่อง",
+      "distinctiveCapabilitiesSupervisorComment": "เป็นครูรุ่นใหม่ที่มีจิตวิญญาณความเป็นครูสูง มีสัมมาคารวะและพร้อมเรียนรู้งานเสมอ",
+      "strengths": "มีความมุ่งมั่น ทุ่มเท เอาใจใส่ผู้เรียนที่มีความต้องการจำเป็นพิเศษอย่างสม่ำเสมอ",
+      "improvementsAndTraining": "ส่งเสริมการผลิตงานวิจัยในชั้นเรียนเพื่อแก้ปัญหาการเรียนรู้ของผู้เรียนเป็นรายบุคคล",
+      "general": "ผลการปฏิบัติงานดีเด่น สมควรพิจารณาจ้างต่อเพื่อพัฒนาการศึกษาพิเศษของโรงเรียน",
+      "improvementsSupervisorComment": "เห็นควรสนับสนุนให้เข้ารับการอบรมพัฒนาสื่อนวัตกรรมการศึกษาพิเศษในระดับชาติ",
+      "assignedWorkSupervisorComment": "ผลการจัดการเรียนรู้ประสบผลสำเร็จเป็นที่ประจักษ์ นักเรียนมีพัฒนาการเชิงบวกชัดเจน",
+      "distinctiveCapabilities": "มีความคิดริสร้างสรรค์ในการปรับประยุกต์หลักสูตรการศึกษาพิเศษ และร่วมมือกับคณะครูในโรงเรียนอย่างดียิ่ง",
+      "assignedWorkAndSuccess": "ปฏิบัติการสอนและดูแลนักเรียนที่มีความต้องการจำเป็นพิเศษ ออกแบบสื่อการเรียนรู้รูปธรรมและแผน IEP ได้อย่างมีคุณภาพ"
+    },
+    "categoryScores": {
+      "cat_t3": {
+        "max": 30,
+        "scored": 30,
+        "percentage": 100
+      },
+      "cat_t2": {
+        "max": 40,
+        "percentage": 100,
+        "scored": 40
+      },
+      "cat_t1": {
+        "percentage": 96.67,
+        "scored": 29,
+        "max": 30
+      },
+      "cat_gov_specific": {
+        "scored": 18,
+        "max": 20,
+        "percentage": 90
+      },
+      "cat_gov_core": {
+        "max": 80,
+        "percentage": 91.25,
+        "scored": 73
+      }
+    },
+    "evaluatorId": "evaluator_1",
+    "evaluateeDepartment": "กลุ่มงานการศึกษาพิเศษและการจัดการเรียนรู้",
+    "scores": {
+      "t_ind_11": 5,
+      "t_ind_2": 15,
+      "t_ind_9": 5,
+      "t_ind_8": 5,
+      "t_ind_6": 5,
+      "t_ind_1": 14,
+      "gov_spec_1": 8,
+      "gov_core_4": 20,
+      "gov_core_2": 9,
+      "t_ind_15": 5,
+      "t_ind_3": 5,
+      "t_ind_16": 5,
+      "t_ind_13": 5,
+      "gov_core_1": 17,
+      "t_ind_12": 5,
+      "t_ind_7": 5,
+      "t_ind_14": 5,
+      "t_ind_5": 5,
+      "gov_core_5": 10,
+      "gov_spec_2": 10,
+      "gov_core_3": 17,
+      "t_ind_4": 5,
+      "t_ind_10": 5
+    },
+    "workplaceLocation": "กลุ่มงานการศึกษาพิเศษ โรงเรียนศึกษาพิเศษชัยนาท",
+    "evaluateeName": "นางสาวอังคณา จันทิมา",
+    "formId": "form_teacher_assistant",
+    "id": "sub_eval_1",
+    "evaluateePosition": "ลูกจ้างชั่วคราว ตำแหน่งครูผู้ช่วย (ลำดับที่ ๓๗)"
+  },
+  {
+    "comments": {
+      "distinctiveCapabilities": "มีวินัยสูง ร่วมกิจกรรมของโรงเรียนทุกกิจกรรมและช่วยเหลืองานส่วนรวมเสมอ",
+      "strengths": "ปฏิบัติหน้าที่สอนอย่างเต็มความสามารถและมีปฏิสัมพันธ์ที่ดีกับเพื่อนร่วมงาน",
+      "improvementsAndTraining": "ส่งเสริมการพัฒนาตนเองตามเกณฑ์ ว.PA อย่างเป็นระบบ",
+      "assignedWorkAndSuccess": "จัดทำแผนการจัดการเรียนรู้รายบุคคล (IEP) และบันทึกหลังการสอนได้ครบถ้วนสมบูรณ์",
+      "general": "มีความรับผิดชอบสูง สมควรจ้างต่อ",
+      "improvements": "พัฒนาการวัดและประเมินผลตามสภาพจริงให้หลากหลาย",
+      "improvementsSupervisorComment": "แนะนำให้เข้าร่วมกลุ่ม PLC ของโรงเรียนอย่างต่อเนื่อง",
+      "assignedWorkSupervisorComment": "ปฏิบัติหน้าที่ด้วยความเรียบร้อยและถูกต้องตามระเบียบ",
+      "distinctiveCapabilitiesSupervisorComment": "เป็นครูพี่เลี้ยงที่อบอุ่นและมีเมตตาต่อนักเรียน"
+    },
+    "evaluatorPosition": "ครูชำนาญการพิเศษ (กรรมการ ชุดที่ 1)",
+    "grade": "ระดับดีเด่น",
+    "percentage": 94,
+    "categoryScores": {
+      "cat_t2": {
+        "max": 40,
+        "percentage": 92.5,
+        "scored": 37
+      },
+      "cat_t1": {
+        "max": 30,
+        "scored": 27,
+        "percentage": 90
+      },
+      "cat_t3": {
+        "percentage": 100,
+        "scored": 30,
+        "max": 30
+      }
+    },
+    "evaluatorName": "นางพนิดา สมบูรณ์ชัย",
+    "id": "sub_eval_2",
+    "groupId": "group_1",
+    "evaluatorId": "evaluator_2",
+    "startDate": "2024-05-15",
+    "submittedAt": "2026-09-16T10:15:00.000Z",
+    "workplaceLocation": "กลุ่มงานการศึกษาพิเศษ โรงเรียนศึกษาพิเศษชัยนาท",
+    "evaluateeDepartment": "กลุ่มงานการศึกษาพิเศษและการจัดการเรียนรู้",
+    "evaluateePosition": "ลูกจ้างชั่วคราว ตำแหน่งครูผู้ช่วย (ลำดับที่ ๓๗)",
+    "positionNumber": "พ-1042",
+    "totalScore": 94,
+    "maxScore": 100,
+    "recommendation": {
+      "supervisorPosition": "ครูชำนาญการพิเศษ",
+      "supervisorName": "นางพนิดา สมบูรณ์ชัย",
+      "decision": "continue",
+      "supervisorSignedAt": "2026-09-16T10:15:00.000Z"
+    },
+    "formId": "form_teacher_assistant",
+    "formTitle": "แบบประเมินผลการปฏิบัติงานลูกจ้างชั่วคราว เพื่อประกอบการพิจารณาจ้างต่อ/งดจ้างต่อ (ตำแหน่งครูผู้ช่วย)",
+    "scores": {
+      "t_ind_3": 5,
+      "t_ind_16": 5,
+      "t_ind_13": 5,
+      "t_ind_15": 5,
+      "t_ind_8": 4,
+      "t_ind_9": 5,
+      "t_ind_2": 14,
+      "t_ind_11": 5,
+      "t_ind_1": 13,
+      "t_ind_6": 5,
+      "t_ind_10": 4,
+      "t_ind_4": 4,
+      "t_ind_7": 5,
+      "t_ind_14": 5,
+      "t_ind_5": 4,
+      "t_ind_12": 5
+    },
+    "evaluateeName": "นางสาวอังคณา จันทิมา",
+    "evaluateeId": "staff_1",
+    "isDraft": false
+  },
+  {
+    "id": "sub_eval_3",
+    "evaluateeDepartment": "กลุ่มงานการศึกษาพิเศษและการดูแลนักเรียน",
+    "evaluateeName": "นางสาวนันทนัช กวินทิพย์เมธี",
+    "evaluateePosition": "ลูกจ้างจ้างเหมาบริการ",
+    "evaluateeId": "support_2",
+    "recommendation": {
+      "supervisorSignedAt": "2026-09-17T11:00:00.000Z",
+      "supervisorName": "นางสาวนุชจรินทร์ โพธิ์เงิน",
+      "supervisorPosition": "รองผู้อำนวยการชำนาญการ",
+      "decision": "continue"
+    },
+    "isDraft": false,
+    "formTitle": "แบบประเมินผลการปฏิบัติงาน ตำแหน่ง พี่เลี้ยงเด็กพิการ/จ้างเหมาบริการ",
+    "submittedAt": "2026-09-17T11:00:00.000Z",
+    "totalScore": 35,
+    "comments": {
+      "improvements": "บันทึกการส่งมอบเวรประจำวันให้ละเอียดยิ่งขึ้น",
+      "assignedWorkAndSuccess": "ดูแลกิจวัตรประจำวันของนักเรียนที่มีความต้องการพิเศษได้อย่างอบอุ่น ปลอดภัย ไร้อุบัติเหตุ",
+      "distinctiveCapabilities": "มีความอดทนสูงมาก อ่อนโยน ดูแลเด็กพิเศษเสมือนลูกหลาน ผู้ปกครองให้ความไว้วางใจและชื่นชมมาก",
+      "strengths": "มีความอดทนสูง เมตตาจิตสูง ไม่เคยละทิ้งหน้าที่",
+      "improvementsAndTraining": "ส่งเสริมการอบรมเทคนิคการปฐมพยาบาลเบื้องต้นและการดูแลเด็กที่มีภาวะชัก",
+      "general": "เป็นบุคลากรตัวอย่างด้านความเสียสละ เห็นควรจ้างต่อ"
+    },
+    "groupId": "group_2",
+    "evaluatorPosition": "รองผู้อำนวยการชำนาญการ (ประธานกรรมการ ชุดที่ 2)",
+    "categoryScores": {
+      "cat_s1_1": {
+        "max": 25,
+        "percentage": 100,
+        "scored": 25
+      },
+      "cat_s1_2": {
+        "scored": 10,
+        "max": 10,
+        "percentage": 100
+      }
+    },
+    "evaluatorId": "evaluator_4",
+    "evaluatorName": "นางสาวนุชจรินทร์ โพธิ์เงิน",
+    "grade": "ระดับดีเด่น",
+    "formId": "form_support_childcare",
+    "maxScore": 35,
+    "scores": {
+      "sc_3": 5,
+      "sc_5": 5,
+      "sc_4": 5,
+      "sc_2": 5,
+      "sc_1": 5,
+      "sc_7": 5,
+      "sc_6": 5
+    },
+    "percentage": 100
+  },
+  {
+    "totalScore": 33,
+    "id": "sub_eval_4",
+    "submittedAt": "2026-09-17T11:30:00.000Z",
+    "recommendation": {
+      "decision": "continue"
+    },
+    "evaluateeName": "นางสาวนันทนัช กวินทิพย์เมธี",
+    "formTitle": "แบบประเมินผลการปฏิบัติงาน ตำแหน่ง พี่เลี้ยงเด็กพิการ/จ้างเหมาบริการ",
+    "evaluateePosition": "ลูกจ้างจ้างเหมาบริการ",
+    "scores": {
+      "sc_6": 5,
+      "sc_7": 5,
+      "sc_1": 5,
+      "sc_2": 5,
+      "sc_4": 5,
+      "sc_5": 4,
+      "sc_3": 4
+    },
+    "evaluateeId": "support_2",
+    "comments": {
+      "strengths": "มีความรับผิดชอบและขยันขันแข็ง",
+      "improvementsAndTraining": "เรียนรู้ภาษามือเบื้องต้นเพิ่มเติมเพื่อการสื่อสารกับนักเรียนบกพร่องทางการได้ยิน",
+      "distinctiveCapabilities": "ตรงต่อเวลา รักษาความสะอาดและดูแลความปลอดภัยในห้องเรียนได้ดีเยี่ยม",
+      "assignedWorkAndSuccess": "ช่วยเหลือครูประจำชั้นในการจัดกิจกรรมและดูแลสุขอนามัยนักเรียนได้อย่างมีประสิทธิภาพ",
+      "improvements": "ฝึกทักษะการใช้ภาษามือ",
+      "general": "ทำงานดีเยี่ยม ไว้วางใจได้"
+    },
+    "formId": "form_support_childcare",
+    "evaluateeDepartment": "กลุ่มงานการศึกษาพิเศษและการดูแลนักเรียน",
+    "isDraft": false,
+    "evaluatorName": "นางรวิวรรณ โดเคน",
+    "percentage": 94.29,
+    "categoryScores": {
+      "cat_s1_1": {
+        "max": 25,
+        "percentage": 92,
+        "scored": 23
+      },
+      "cat_s1_2": {
+        "scored": 10,
+        "percentage": 100,
+        "max": 10
+      }
+    },
+    "evaluatorPosition": "ครูชำนาญการ (กรรมการ ชุดที่ 2)",
+    "groupId": "group_2",
+    "evaluatorId": "evaluator_5",
+    "grade": "ระดับดีเด่น",
+    "maxScore": 35
+  },
+  {
+    "scores": {
+      "sj_6": 5,
+      "sj_1": 4,
+      "sj_4": 5,
+      "sj_5": 4,
+      "sj_2": 5,
+      "sj_3": 4
+    },
+    "maxScore": 30,
+    "evaluateeDepartment": "กลุ่มงานอาคารสถานที่และซ่อมบำรุง",
+    "totalScore": 27,
+    "evaluatorName": "นางสาวฐรัชญา หมื่นหัส",
+    "evaluatorId": "evaluator_6",
+    "evaluateePosition": "ลูกจ้างจ้างเหมาบริการ",
+    "formId": "form_support_janitor",
+    "groupId": "group_2",
+    "recommendation": {
+      "decision": "continue"
+    },
+    "id": "sub_eval_5",
+    "evaluateeId": "support_9",
+    "percentage": 90,
+    "isDraft": false,
+    "formTitle": "แบบประเมินผลการปฏิบัติงาน ตำแหน่ง ช่างซ่อมบำรุง/อาคารสถานที่",
+    "evaluatorPosition": "ครูชำนาญการ (กรรมการและเลขานุการ ชุดที่ 2)",
+    "comments": {
+      "strengths": "มีความกระตือรือร้นและพร้อมให้บริการเสมอ",
+      "assignedWorkAndSuccess": "ดูแลความสะอาดอาคารเรียนและซ่อมแซมระบบสาธารณูปโภคได้อย่างรวดเร็วทันเหตุการณ์",
+      "improvementsAndTraining": "จัดเก็บเครื่องมือช่างให้เป็นหมวดหมู่และล็อกห้องเครื่องมือให้ปลอดภัย",
+      "general": "สมควรได้รับการจ้างต่อ",
+      "improvements": "ระมัดระวังความปลอดภัยในการทำงานบนที่สูง",
+      "distinctiveCapabilities": "มีความชำนาญงานซ่อมบำรุงอาคารและระบบไฟฟ้าประปา ช่วยให้โรงเรียนประหยัดงบประมาณ"
+    },
+    "evaluateeName": "นายอนันต์ ทองหมี",
+    "grade": "ระดับดีเด่น",
+    "submittedAt": "2026-09-17T13:45:00.000Z",
+    "categoryScores": {
+      "cat_sj_2": {
+        "scored": 9,
+        "percentage": 90,
+        "max": 10
+      },
+      "cat_sj_1": {
+        "max": 20,
+        "percentage": 90,
+        "scored": 18
+      }
+    }
+  }
+]

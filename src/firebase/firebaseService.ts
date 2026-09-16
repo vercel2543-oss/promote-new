@@ -336,6 +336,23 @@ export const FirebaseService = {
   // ----------------------------------------------------
   // Grade Thresholds
   // ----------------------------------------------------
+  async getGradeThresholds(): Promise<GradeThreshold[] | null> {
+    try {
+      const docRef = doc(db, THRESHOLDS_COLLECTION, 'current');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && Array.isArray(data.thresholds)) {
+          return data.thresholds as GradeThreshold[];
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching grade thresholds from Firebase:', error);
+      return null;
+    }
+  },
+
   async saveGradeThresholds(thresholds: GradeThreshold[]): Promise<void> {
     try {
       const docRef = doc(db, THRESHOLDS_COLLECTION, 'current');

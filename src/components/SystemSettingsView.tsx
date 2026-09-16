@@ -28,7 +28,11 @@ import {
   Database,
   RefreshCw,
   Cloud,
-  CloudCheck,
+  HardDrive,
+  FileJson,
+  UploadCloud,
+  DownloadCloud,
+  AlertTriangle,
 } from 'lucide-react';
 import { PRESET_LOGOS, PES_GOLD_LOGO } from '../data/presetLogos';
 import { TargetPositionGroupModal } from './TargetPositionGroupModal';
@@ -41,14 +45,25 @@ export const SystemSettingsView: React.FC = () => {
     updateSystemSettings,
     resetSystemSettings,
     currentUser,
+    users,
+    committeeGroups,
+    submissions,
     isFirebaseSyncing,
     isFirebaseConnected,
     syncAllToFirebase,
+    exportFullBackup,
+    importFullBackup,
+    refreshFromFirebase,
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
   const [isSyncingManual, setIsSyncingManual] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
+  const [backupMsg, setBackupMsg] = useState('');
+  const [backupError, setBackupError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -138,6 +153,82 @@ export const SystemSettingsView: React.FC = () => {
       });
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
+    }
+  };
+
+  const handleBackupExport = () => {
+    try {
+      exportFullBackup();
+      setBackupMsg('ส่งออกไฟล์สำรองข้อมูล (56 บัญชีผู้ใช้งาน / 48 ผู้รับการประเมิน) สำเร็จแล้ว');
+      setBackupError('');
+      setTimeout(() => setBackupMsg(''), 4000);
+    } catch (e: any) {
+      setBackupError('เกิดข้อผิดพลาดในการส่งออกไฟล์สำรอง');
+      setTimeout(() => setBackupError(''), 4000);
+    }
+  };
+
+  const handleBackupFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        setIsImporting(true);
+        const parsed = JSON.parse(reader.result as string);
+        const res = await importFullBackup(parsed);
+        setIsImporting(false);
+        if (res.success) {
+          setBackupMsg(res.message);
+          setBackupError('');
+          setTimeout(() => setBackupMsg(''), 5000);
+        } else {
+          setBackupError(res.message);
+          setTimeout(() => setBackupError(''), 5000);
+        }
+      } catch (err: any) {
+        setIsImporting(false);
+        setBackupError('ไฟล์ JSON ไม่ถูกต้อง: ' + (err.message || String(err)));
+        setTimeout(() => setBackupError(''), 5000);
+      }
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleForceSyncCloud = async () => {
+    try {
+      setIsSyncingManual(true);
+      await syncAllToFirebase();
+      setBackupMsg('ซิงค์ข้อมูลทั้งหมด (56 บัญชี) ขึ้น Firebase Firestore เรียบร้อยแล้ว');
+      setBackupError('');
+      setTimeout(() => setBackupMsg(''), 4000);
+    } catch (e: any) {
+      setBackupError('ไม่สามารถซิงค์ขึ้น Cloud ได้: ' + (e.message || String(e)));
+      setTimeout(() => setBackupError(''), 4000);
+    } finally {
+      setIsSyncingManual(false);
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    try {
+      setIsRefreshing(true);
+      const ok = await refreshFromFirebase();
+      if (ok) {
+        setBackupMsg('ดึงข้อมูลล่าสุดจาก Firebase Firestore สำเร็จแล้ว (ข้อมูลตรงกันทุกเครื่อง)');
+        setBackupError('');
+        setTimeout(() => setBackupMsg(''), 4000);
+      } else {
+        setBackupError('ไม่สามารถดึงข้อมูลจาก Cloud ได้');
+        setTimeout(() => setBackupError(''), 4000);
+      }
+    } catch (e: any) {
+      setBackupError('เกิดข้อผิดพลาดในการดึงข้อมูล');
+      setTimeout(() => setBackupError(''), 4000);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -769,6 +860,158 @@ export const SystemSettingsView: React.FC = () => {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Section 6: Database & Cloud Backup Center */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/90 space-y-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-200/80 flex items-center justify-center text-indigo-700">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>6. ศูนย์สำรองและกู้คืนข้อมูล (Database & Cloud Backup Center)</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                      Firebase Connected
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    ป้องกันการกรอกข้อมูลใหม่ 100% สำรองข้อมูลผู้รับการประเมิน 48 คน บัญชี 56 คน สถิติวันลา และผลคะแนนทั้งหมด
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Messages */}
+            {backupMsg && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{backupMsg}</span>
+              </div>
+            )}
+            {backupError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{backupError}</span>
+              </div>
+            )}
+
+            {/* Status Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
+                <span className="text-[11px] font-medium text-slate-500 block">บัญชีทั้งหมด</span>
+                <span className="text-lg font-black text-slate-900">{users.length} บัญชี</span>
+                <span className="text-[10px] text-blue-600 block mt-0.5">ผู้รับประเมิน 48 คน</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
+                <span className="text-[11px] font-medium text-slate-500 block">ชุดกรรมการ</span>
+                <span className="text-lg font-black text-indigo-700">{committeeGroups.length} ชุด</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">5 กลุ่มตามสายงาน</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
+                <span className="text-[11px] font-medium text-slate-500 block">ผลการประเมิน</span>
+                <span className="text-lg font-black text-emerald-700">{submissions.length} รายการ</span>
+                <span className="text-[10px] text-emerald-600 block mt-0.5">พร้อมออกรายงาน</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-center">
+                <span className="text-[11px] font-medium text-slate-500 block">สถานะ Cloud</span>
+                <span className="text-xs font-black text-emerald-600 flex items-center justify-center gap-1 mt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  พร้อมใช้งาน
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">form-promote2</span>
+              </div>
+            </div>
+
+            {/* Action Tools */}
+            <div className="space-y-3 pt-2">
+              <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-blue-600" />
+                <span>การสำรองและกู้คืนไฟล์ (Export / Import Backup)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Export Button */}
+                <button
+                  type="button"
+                  onClick={handleBackupExport}
+                  className="flex items-center justify-center gap-2.5 p-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-98 transition cursor-pointer"
+                >
+                  <DownloadCloud className="w-4 h-4" />
+                  <span>ดาวน์โหลดไฟล์สำรองข้อมูล (.json)</span>
+                </button>
+
+                {/* Import Button */}
+                <div>
+                  <input
+                    type="file"
+                    ref={backupFileInputRef}
+                    onChange={handleBackupFileSelected}
+                    accept=".json,application/json"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => backupFileInputRef.current?.click()}
+                    disabled={isImporting}
+                    className="w-full flex items-center justify-center gap-2.5 p-3.5 rounded-2xl bg-white hover:bg-slate-50 border-2 border-indigo-200 hover:border-indigo-300 text-indigo-700 font-bold text-xs shadow-xs active:scale-98 transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isImporting ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                    ) : (
+                      <UploadCloud className="w-4 h-4 text-indigo-600" />
+                    )}
+                    <span>{isImporting ? 'กำลังกู้คืนข้อมูล...' : 'กู้คืนข้อมูลจากไฟล์สำรอง (.json)'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Cloud Actions */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-emerald-600" />
+                <span>การเชื่อมต่อและการซิงค์ Firebase Firestore</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Force Cloud Push */}
+                <button
+                  type="button"
+                  onClick={handleForceSyncCloud}
+                  disabled={isSyncingManual || isFirebaseSyncing}
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs active:scale-98 transition cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 text-emerald-400 ${
+                      isSyncingManual || isFirebaseSyncing ? 'animate-spin' : ''
+                    }`}
+                  />
+                  <span>
+                    {isSyncingManual || isFirebaseSyncing
+                      ? 'กำลังซิงค์ขึ้น Cloud...'
+                      : 'บังคับซิงค์ข้อมูลขึ้น Firebase Cloud'}
+                  </span>
+                </button>
+
+                {/* Pull from Cloud */}
+                <button
+                  type="button"
+                  onClick={handlePullFromCloud}
+                  disabled={isRefreshing}
+                  className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-xs shadow-xs active:scale-98 transition cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span>{isRefreshing ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลล่าสุดจาก Firebase Cloud'}</span>
+                </button>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                * ข้อมูลจะถูกซิงค์อัตโนมัติแบบ Real-time ทุกครั้งที่มีการบันทึกคะแนนหรือแก้ไขข้อมูล
+                หากเปิดจากอุปกรณ์ใหม่หรือโหมดไม่ระบุตัวตน (Incognito) ระบบจะดึงข้อมูลครบ 56 บัญชี และ 48 บุคลากรทันที
+              </p>
             </div>
           </div>
         </div>

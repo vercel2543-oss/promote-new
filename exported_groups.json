@@ -1,0 +1,131 @@
+[
+  {
+    "assignedEvaluateeIds": [
+      "staff_1",
+      "staff_2",
+      "staff_3",
+      "staff_4",
+      "staff_5",
+      "staff_6",
+      "staff_7",
+      "staff_8",
+      "staff_9",
+      "staff_10",
+      "staff_11",
+      "staff_12",
+      "staff_13"
+    ],
+    "name": "คณะกรรมการประเมินผล ชุดที่ 1 (คำสั่งที่ 251/2569 และ 252/2569)",
+    "id": "group_1",
+    "evaluatorIds": [
+      "evaluator_1",
+      "evaluator_2",
+      "evaluator_3"
+    ],
+    "targetPositionGroup": "teacher_assistant",
+    "createdAt": "2026-08-17T08:30:00.000Z",
+    "description": "หน้าที่: พิจารณาผลการปฏิบัติงาน พฤติกรรมการทำงาน ความประพฤติ การรักษาวินัย คุณธรรมและจริยธรรม (ประธาน: นางสาวอรวรรณ พงษ์ศิริ, กรรมการ: นางพนิดา สมบูรณ์ชัย, เลขานุการ: นางสาวศุภาวรรณ ทาประเสริฐ)"
+  },
+  {
+    "id": "group_2",
+    "description": "หน้าที่: พิจารณาผลการปฏิบัติงาน พฤติกรรมการทำงาน ความประพฤติ การรักษาวินัย คุณธรรมและจริยธรรม (ประธาน: นางสาวนุชจรินทร์ โพธิ์เงิน, กรรมการ: นางรวิวรรณ โดเคน, เลขานุการ: นางสาวฐรัชญา หมื่นหัส)",
+    "assignedEvaluateeIds": [
+      "support_1",
+      "support_2",
+      "support_3",
+      "support_4",
+      "support_5",
+      "support_6",
+      "support_7",
+      "support_8",
+      "support_9",
+      "support_10",
+      "support_11",
+      "support_12",
+      "support_13",
+      "support_14",
+      "support_15",
+      "support_16",
+      "support_17"
+    ],
+    "createdAt": "2026-08-17T08:30:00.000Z",
+    "evaluatorIds": [
+      "evaluator_4",
+      "evaluator_5",
+      "evaluator_6"
+    ],
+    "targetPositionGroup": "support_staff",
+    "name": "คณะกรรมการประเมินผล ชุดที่ 2 (คำสั่งที่ 251/2569 และ 252/2569)"
+  },
+  {
+    "createdAt": "2026-08-17T08:30:00.000Z",
+    "evaluatorIds": [
+      "evaluator_1",
+      "evaluator_director",
+      "evaluator_2"
+    ],
+    "assignedEvaluateeIds": [
+      "staff_gov_1"
+    ],
+    "description": "หน้าที่: ประเมินผลการปฏิบัติงานพนักงานราชการทั่วไป ตำแหน่งครูผู้สอน ตามสมรรถนะหลัก 5 ด้าน และสมรรถนะประจำสายงาน 2 ด้าน",
+    "name": "คณะกรรมการประเมินผล ชุดที่ 3 (พนักงานราชการทั่วไป ตำแหน่ง ครูผู้สอน)",
+    "id": "group_3",
+    "targetPositionGroup": "government_employee_teacher"
+  },
+  {
+    "targetPositionGroup": "support_staff",
+    "id": "group_4_mt99egjj",
+    "description": "",
+    "evaluatorIds": [
+      "evaluator_1",
+      "evaluator_3",
+      "evaluator_2"
+    ],
+    "name": "คณะกรรมการประเมิน จ้างเหมาบริการ ชุดที่ 1",
+    "createdAt": "2026-08-25T22:51:24.607Z",
+    "assignedEvaluateeIds": [
+      "support_8",
+      "support_9",
+      "support_7",
+      "support_15",
+      "support_16",
+      "support_12",
+      "support_11",
+      "support_13",
+      "support_14",
+      "support_10",
+      "staff_1789359860171",
+      "staff_1789359755985",
+      "staff_1789359974550",
+      "staff_1789359408850"
+    ]
+  },
+  {
+    "createdAt": "2026-08-25T22:52:07.150Z",
+    "assignedEvaluateeIds": [
+      "support_17",
+      "staff_1789359239976",
+      "staff_1789360342997",
+      "staff_1789360433970",
+      "staff_1789360498578",
+      "staff_1789360590113",
+      "staff_1789360665637",
+      "staff_1789360734677",
+      "staff_1789360805508",
+      "staff_1789360888898",
+      "staff_1789361027093",
+      "staff_1789361099636",
+      "staff_1789360957085",
+      "staff_1789361154249"
+    ],
+    "targetPositionGroup": "support_staff",
+    "name": "คณะกรรมการประเมิน จ้างเหมาบริการ ชุดที่ 2",
+    "description": "",
+    "id": "group_5_mt99fdda",
+    "evaluatorIds": [
+      "evaluator_4",
+      "evaluator_5",
+      "evaluator_6"
+    ]
+  }
+]

@@ -62,7 +62,7 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({ avatar, onChange, role, nam
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressed = await compressAndResizeImage(file, 480, 480, 0.85);
+        const compressed = await compressAndResizeImage(file, 256, 256, 0.8);
         onChange(compressed);
       } catch (err) {
         console.error('Failed to compress avatar:', err);
@@ -417,7 +417,7 @@ export const UserManagementView: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressed = await compressAndResizeImage(file, 400, 400, 0.82);
+        const compressed = await compressAndResizeImage(file, 256, 256, 0.8);
         setFormData((prev) => ({ ...prev, avatar: compressed }));
       } catch (err) {
         console.error('Image compression failed:', err);

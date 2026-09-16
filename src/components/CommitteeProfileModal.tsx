@@ -59,7 +59,7 @@ export const CommitteeProfileModal: React.FC<CommitteeProfileModalProps> = ({
     if (file) {
       try {
         setIsUploading(true);
-        const compressed = await compressAndResizeImage(file, 400, 400, 0.82);
+        const compressed = await compressAndResizeImage(file, 256, 256, 0.8);
         setFormData((prev) => ({ ...prev, avatarUrl: compressed }));
       } catch (err) {
         console.error('Image upload failed:', err);

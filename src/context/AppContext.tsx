@@ -459,12 +459,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Setup real-time listeners for all models across all devices (PC, Android, iOS)
         unsubSettings = FirebaseService.listenSystemSettings((remoteSettings) => {
           if (remoteSettings) {
-            setSystemSettings((prev) => {
-              const merged = { ...prev, ...remoteSettings };
+            setSystemSettings((localSettings) => {
+              // Preserve locally uploaded logo or newer settings if remote is older
+              const localTime = localSettings?.updatedAt ? new Date(localSettings.updatedAt).getTime() : 0;
+              const remoteTime = remoteSettings?.updatedAt ? new Date(remoteSettings.updatedAt).getTime() : 0;
+
+              let merged = { ...localSettings, ...remoteSettings };
+              if (localSettings?.logoUrl && !remoteSettings?.logoUrl) {
+                merged.logoUrl = localSettings.logoUrl;
+                FirebaseService.saveSystemSettings(merged).catch(console.error);
+              } else if (localTime > remoteTime) {
+                merged = { ...remoteSettings, ...localSettings };
+                FirebaseService.saveSystemSettings(merged).catch(console.error);
+              }
               try {
                 localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
               } catch (e) {
-                // ignore storage error if quota reached
+                // ignore
               }
               return merged;
             });
@@ -474,19 +485,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubUsers = FirebaseService.listenUsers((remoteUsers) => {
           if (remoteUsers && remoteUsers.length > 0) {
             const { sanitized } = sanitizeAndFixUsers(remoteUsers);
-            setUsers(sanitized);
+            setUsers((localUsers) => {
+              const mergedUsers = sanitized.map((r) => {
+                const local = localUsers.find((l) => l.id === r.id);
+                if (local) {
+                  const hasLocalAvatar = local.avatar || local.avatarUrl;
+                  const hasRemoteAvatar = r.avatar || r.avatarUrl;
+                  if (hasLocalAvatar && !hasRemoteAvatar) {
+                    const avatar = local.avatar || local.avatarUrl;
+                    const syncedUser = { ...r, avatar, avatarUrl: avatar };
+                    FirebaseService.saveUser(syncedUser).catch(console.error);
+                    return syncedUser;
+                  }
+                }
+                return r;
+              });
+              try {
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
+              } catch (e) {
+                // ignore
+              }
+              return mergedUsers;
+            });
+
             // Synchronize active currentUser with latest remote snapshot
             setCurrentUser((current) => {
               if (!current || !current.id) return current;
               const matched = sanitized.find((u) => u.id === current.id);
               if (matched) {
+                const avatar = matched.avatar || matched.avatarUrl || current.avatar || current.avatarUrl;
                 const isDifferent =
-                  matched.avatar !== current.avatar ||
-                  matched.avatarUrl !== current.avatarUrl ||
                   matched.name !== current.name ||
                   matched.role !== current.role ||
-                  matched.position !== current.position;
-                return isDifferent ? matched : current;
+                  matched.position !== current.position ||
+                  (matched.avatar && matched.avatar !== current.avatar);
+                return isDifferent ? { ...current, ...matched, avatar, avatarUrl: avatar } : current;
               }
               return current;
             });
@@ -515,18 +548,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         unsubSubs = FirebaseService.listenSubmissions((remoteSubs) => {
           if (remoteSubs) {
-            // Deduplicate remote submissions by evaluateeId and evaluatorId in memory, keeping latest submittedAt
-            const subMap = new Map<string, EvaluationSubmission>();
-            const sorted = [...remoteSubs].sort(
-              (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
-            );
+            setSubmissions((localSubs) => {
+              const subMap = new Map<string, EvaluationSubmission>();
 
-            sorted.forEach((sub) => {
-              const key = `${sub.evaluateeId}_${sub.evaluatorId}`;
-              subMap.set(key, sub);
+              // 1. Add all remote submissions
+              remoteSubs.forEach((sub) => {
+                const key = sub.id || `${sub.evaluateeId}_${sub.evaluatorId}`;
+                subMap.set(key, sub);
+              });
+
+              // 2. Safely merge with existing local submissions (prevents data loss on page refresh)
+              (localSubs || []).forEach((local) => {
+                const key = local.id || `${local.evaluateeId}_${local.evaluatorId}`;
+                const remote = subMap.get(key);
+                if (!remote) {
+                  // Remote does not have this local submission yet: retain local and sync to Firestore
+                  subMap.set(key, local);
+                  FirebaseService.saveSubmission(local).catch(console.error);
+                } else {
+                  const localTime = new Date(local.submittedAt).getTime();
+                  const remoteTime = new Date(remote.submittedAt).getTime();
+                  if (localTime > remoteTime) {
+                    // Local is newer: retain local and sync to Firestore
+                    subMap.set(key, local);
+                    FirebaseService.saveSubmission(local).catch(console.error);
+                  }
+                }
+              });
+
+              const mergedList = Array.from(subMap.values());
+              try {
+                localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(mergedList));
+              } catch (e) {
+                // ignore
+              }
+              return mergedList;
             });
-
-            setSubmissions(Array.from(subMap.values()));
           }
         });
 
@@ -740,7 +797,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const existing = submissions.find(
       (s) => s.evaluateeId === data.evaluateeId && s.evaluatorId === data.evaluatorId
     );
-    const submissionId = existing?.id || 'sub_' + Date.now();
+    // Use consistent, deterministic ID per candidate-evaluator pair
+    const submissionId = existing?.id || `sub_${data.evaluateeId}_${data.evaluatorId}`;
 
     const newSubmission: EvaluationSubmission = {
       ...data,
@@ -755,21 +813,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           !(s.evaluateeId === data.evaluateeId && s.evaluatorId === data.evaluatorId) &&
           s.id !== submissionId
       );
-      return [newSubmission, ...filtered];
+      const nextList = [newSubmission, ...filtered];
+      safeSetItem(STORAGE_KEYS.SUBMISSIONS, nextList);
+      return nextList;
     });
 
     clearDraftEvaluation(data.evaluateeId, data.formId);
 
     // Save to Firebase (triggers real-time broadcast to all connected devices)
     FirebaseService.saveSubmission(newSubmission).catch(console.error);
-
-    // If there were other duplicate submissions for this evaluator & evaluatee, clean them up from Firestore
-    const duplicates = submissions.filter(
-      (s) => s.evaluateeId === data.evaluateeId && s.evaluatorId === data.evaluatorId && s.id !== submissionId
-    );
-    duplicates.forEach((dup) => {
-      FirebaseService.deleteSubmission(dup.id).catch(console.error);
-    });
 
     logAudit(
       'SUBMIT_EVALUATION',
@@ -979,27 +1031,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(updates.avatar === '' || updates.avatarUrl === '' ? { avatar: '', avatarUrl: '' } : {}),
     };
 
-    setUsers((prev) =>
-      prev.map((u) => {
+    setUsers((prev) => {
+      const nextUsers = prev.map((u) => {
         if (u.id === userId) {
           const updatedUser = { ...u, ...normalizedUpdates };
           FirebaseService.saveUser(updatedUser).catch(console.error);
           return updatedUser;
         }
         return u;
-      })
-    );
+      });
+      safeSetItem(STORAGE_KEYS.USERS, nextUsers);
+      return nextUsers;
+    });
+
     if (currentUser.id === userId) {
-      setCurrentUser((prev) => ({ ...prev, ...normalizedUpdates }));
+      setCurrentUser((prev) => {
+        const nextCurrent = { ...prev, ...normalizedUpdates };
+        safeSetItem(STORAGE_KEYS.CURRENT_USER, nextCurrent);
+        return nextCurrent;
+      });
     }
     logAudit('UPDATE_PROFILE', `อัปเดตข้อมูลโปรไฟล์และรูปภาพ: ${updates.name || currentUser.name}`);
   };
 
   const updateSystemSettings = async (newSettings: Partial<SystemSettings>): Promise<void> => {
-    const updated = { ...systemSettings, ...newSettings };
+    const updated = { ...systemSettings, ...newSettings, updatedAt: new Date().toISOString() };
     setSystemSettings(updated);
+    safeSetItem(STORAGE_KEYS.SETTINGS, updated);
     try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
       await FirebaseService.saveSystemSettings(updated);
     } catch (error) {
       console.error('Failed to save system settings to Firebase:', error);

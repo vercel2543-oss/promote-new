@@ -64,29 +64,54 @@ export async function compressAndResizeImage(
         ctx.imageSmoothingQuality = 'high';
 
         if (!shouldPreserveTransparency) {
-          // Fill background with white for photos/JPEGs
+          // Photos / Avatars: Use WebP or JPEG
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedDataUrl);
+          
+          let result = '';
+          try {
+            const webp = canvas.toDataURL('image/webp', quality);
+            if (webp.startsWith('data:image/webp')) {
+              result = webp;
+            }
+          } catch (e) {
+            // fallback
+          }
+          if (!result) {
+            result = canvas.toDataURL('image/jpeg', quality);
+          }
+          resolve(result);
         } else {
-          // Transparent PNG / WebP for logos
+          // Transparent logos: Try WebP first (supports alpha and is tiny), fallback to PNG
           ctx.clearRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
-          let compressedDataUrl = canvas.toDataURL('image/png');
-          // If PNG is too large (> 350KB), try webp
-          if (compressedDataUrl.length > 350 * 1024) {
-            try {
-              const webpUrl = canvas.toDataURL('image/webp', quality);
-              if (webpUrl.startsWith('data:image/webp')) {
-                compressedDataUrl = webpUrl;
+
+          let result = '';
+          try {
+            const webp = canvas.toDataURL('image/webp', quality);
+            if (webp.startsWith('data:image/webp') && webp.length < 150 * 1024) {
+              result = webp;
+            }
+          } catch (e) {
+            // fallback
+          }
+
+          if (!result) {
+            result = canvas.toDataURL('image/png');
+            // If PNG is too large (> 120KB), try reducing quality with webp or jpeg
+            if (result.length > 120 * 1024) {
+              try {
+                const webpUrl = canvas.toDataURL('image/webp', 0.8);
+                if (webpUrl.startsWith('data:image/webp')) {
+                  result = webpUrl;
+                }
+              } catch (e) {
+                // fallback
               }
-            } catch (e) {
-              // fallback
             }
           }
-          resolve(compressedDataUrl);
+          resolve(result);
         }
       };
 

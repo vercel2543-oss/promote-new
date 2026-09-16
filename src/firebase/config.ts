@@ -3,22 +3,24 @@ import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
-// Firebase Configuration from user
+import appletConfig from '../../firebase-applet-config.json';
+
+// Firebase Configuration from applet provisioned database
 export const firebaseConfig = {
-  apiKey: "AIzaSyBq1eY_9GaobKcEEFQAqea_t9gicB3FB18",
-  authDomain: "form-promote2.firebaseapp.com",
-  projectId: "form-promote2",
-  storageBucket: "form-promote2.firebasestorage.app",
-  messagingSenderId: "464118821297",
-  appId: "1:464118821297:web:bbf457fb51f5ccdb600d90",
-  measurementId: "G-RT7PWNP2EM"
+  apiKey: appletConfig.apiKey,
+  authDomain: appletConfig.authDomain,
+  projectId: appletConfig.projectId,
+  storageBucket: appletConfig.storageBucket,
+  messagingSenderId: appletConfig.messagingSenderId,
+  appId: appletConfig.appId,
+  measurementId: appletConfig.measurementId || undefined,
 };
 
 // Initialize Firebase App instance safely
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore (default database of form-promote2) & Auth
-export const db = getFirestore(app);
+// Initialize Firestore with the dedicated database ID
+export const db = getFirestore(app, appletConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Initialize Analytics conditionally

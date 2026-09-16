@@ -113,8 +113,8 @@ export const SystemSettingsView: React.FC = () => {
     try {
       setIsProcessingLogo(true);
       setLogoError('');
-      // Compress and optimize image to ensure it is lightweight (< 100KB), perfect for Firestore & fast cross-device sync
-      const optimized = await compressAndResizeImage(file, 450, 450, 0.88, true);
+      // Compress and optimize image to ensure it is lightweight (< 60KB), perfect for Firestore & fast cross-device sync
+      const optimized = await compressAndResizeImage(file, 360, 360, 0.85, true);
       setFormData((prev) => ({ ...prev, logoUrl: optimized }));
     } catch (err: any) {
       console.error('Failed to process uploaded logo:', err);

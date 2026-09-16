@@ -431,10 +431,13 @@ export const FirebaseService = {
     targetGroups?: TargetPositionGroup[]
   ): Promise<void> {
     try {
-      // 1. Save Settings
+      // 1. Save Settings (only if not already present in Firestore)
       if (settings) {
         const settingsRef = doc(db, SETTINGS_COLLECTION, 'current');
-        await setDoc(settingsRef, sanitizeForFirestore({ ...settings, updatedAt: new Date().toISOString() }));
+        const existingSnap = await getDoc(settingsRef);
+        if (!existingSnap.exists()) {
+          await setDoc(settingsRef, sanitizeForFirestore({ ...settings, updatedAt: new Date().toISOString() }));
+        }
       }
 
       // 2. Save Thresholds

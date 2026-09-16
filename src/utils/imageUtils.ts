@@ -8,9 +8,29 @@ export async function compressAndResizeImage(
   input: File | string,
   maxWidth: number = 400,
   maxHeight: number = 400,
-  quality: number = 0.82
+  quality: number = 0.82,
+  preserveTransparency: boolean = false
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    // If input is SVG file or svg data url, it's vector and lightweight
+    if (typeof input === 'object' && input instanceof File && (input.type === 'image/svg+xml' || input.name.endsWith('.svg'))) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(input);
+      return;
+    }
+    if (typeof input === 'string' && input.startsWith('data:image/svg+xml')) {
+      resolve(input);
+      return;
+    }
+
+    const isPngOrWebp =
+      (typeof input === 'object' && input instanceof File && (input.type === 'image/png' || input.type === 'image/webp')) ||
+      (typeof input === 'string' && (input.startsWith('data:image/png') || input.startsWith('data:image/webp')));
+
+    const shouldPreserveTransparency = preserveTransparency || isPngOrWebp;
+
     const processImg = (src: string) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -40,18 +60,34 @@ export async function compressAndResizeImage(
           return;
         }
 
-        // Fill background with white for transparent PNGs
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, width, height);
-
-        // Draw smooth image
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to optimized JPEG dataURL
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
+        if (!shouldPreserveTransparency) {
+          // Fill background with white for photos/JPEGs
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        } else {
+          // Transparent PNG / WebP for logos
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+          let compressedDataUrl = canvas.toDataURL('image/png');
+          // If PNG is too large (> 350KB), try webp
+          if (compressedDataUrl.length > 350 * 1024) {
+            try {
+              const webpUrl = canvas.toDataURL('image/webp', quality);
+              if (webpUrl.startsWith('data:image/webp')) {
+                compressedDataUrl = webpUrl;
+              }
+            } catch (e) {
+              // fallback
+            }
+          }
+          resolve(compressedDataUrl);
+        }
       };
 
       img.onerror = () => {

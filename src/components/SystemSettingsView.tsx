@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Settings,
@@ -33,10 +33,12 @@ import {
   UploadCloud,
   DownloadCloud,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { PRESET_LOGOS, PES_GOLD_LOGO } from '../data/presetLogos';
 import { TargetPositionGroupModal } from './TargetPositionGroupModal';
 import { firebaseConfig } from '../firebase/config';
+import { compressAndResizeImage } from '../utils/imageUtils';
 
 export const SystemSettingsView: React.FC = () => {
   const {
@@ -78,23 +80,47 @@ export const SystemSettingsView: React.FC = () => {
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'logo' | 'demo' | 'round' | 'groups'>('general');
   const [isDragging, setIsDragging] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState('');
 
-  // Handle Logo Upload (File Picker or Drag & Drop)
-  const processUploadedFile = (file: File) => {
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('กรุณาเลือกไฟล์ภาพโลโก้ขนาดไม่เกิน 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setFormData((prev) => ({ ...prev, logoUrl: result }));
-      };
-      reader.readAsDataURL(file);
+  // Keep local form in sync whenever systemSettings updates in real-time from Firebase
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      appName: systemSettings.appName,
+      appShortName: systemSettings.appShortName,
+      schoolName: systemSettings.schoolName,
+      schoolAffiliation: systemSettings.schoolAffiliation,
+      logoUrl: systemSettings.logoUrl || '',
+      isDemoMode: systemSettings.isDemoMode,
+      academicYear: systemSettings.academicYear,
+      evaluationRound: systemSettings.evaluationRound,
+    }));
+  }, [systemSettings]);
+
+  // Handle Logo Upload (File Picker or Drag & Drop) with automatic safe compression
+  const processUploadedFile = async (file: File) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('กรุณาเลือกไฟล์ภาพโลโก้ขนาดไม่เกิน 10MB');
+      return;
+    }
+    try {
+      setIsProcessingLogo(true);
+      setLogoError('');
+      // Compress and optimize image to ensure it is lightweight (< 100KB), perfect for Firestore & fast cross-device sync
+      const optimized = await compressAndResizeImage(file, 450, 450, 0.88, true);
+      setFormData((prev) => ({ ...prev, logoUrl: optimized }));
+    } catch (err: any) {
+      console.error('Failed to process uploaded logo:', err);
+      setLogoError('ไม่สามารถประมวลผลไฟล์ภาพโลโก้ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsProcessingLogo(false);
     }
   };
 
@@ -130,11 +156,20 @@ export const SystemSettingsView: React.FC = () => {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSystemSettings(formData);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
+    try {
+      setIsSaving(true);
+      setSaveError('');
+      await updateSystemSettings(formData);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to save system settings:', err);
+      setSaveError('บันทึกการตั้งค่าไม่สำเร็จ: ' + (err?.message || 'ข้อผิดพลาดในการเชื่อมต่อคลาวด์'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -289,11 +324,12 @@ export const SystemSettingsView: React.FC = () => {
 
             <button
               type="button"
+              disabled={isSaving}
               onClick={handleSave}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 transition cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 transition cursor-pointer disabled:opacity-60"
             >
-              <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่า</span>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{isSaving ? 'กำลังบันทึก Cloud...' : 'บันทึกการตั้งค่า'}</span>
             </button>
           </div>
         </div>
@@ -389,7 +425,7 @@ export const SystemSettingsView: React.FC = () => {
             <div>
               <h4 className="font-bold text-xs sm:text-sm">บันทึกการตั้งค่าระบบสำเร็จแล้ว</h4>
               <p className="text-[11px] text-emerald-700">
-                ข้อมูลโลโก้ ชื่อระบบ ชื่อสถานศึกษา และโหมด Demo ได้รับการอัปเดตทั่วทั้งระบบทันที
+                ข้อมูลโลโก้ ชื่อระบบ ชื่อสถานศึกษา และโหมด Demo ได้รับการอัปเดตและซิงค์ไปยังคลาวด์ Firebase แบบเรียลไทม์ทุกอุปกรณ์
               </p>
             </div>
           </div>
@@ -397,6 +433,44 @@ export const SystemSettingsView: React.FC = () => {
             type="button"
             onClick={() => setIsSaved(false)}
             className="text-xs text-emerald-700 font-bold hover:underline"
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-md animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div>
+              <h4 className="font-bold text-xs sm:text-sm">ไม่สามารถบันทึกการตั้งค่าไปยัง Cloud ได้</h4>
+              <p className="text-[11px] text-rose-700">{saveError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveError('')}
+            className="text-xs text-rose-700 font-bold hover:underline"
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
+      {logoError && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-md animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div>
+              <h4 className="font-bold text-xs sm:text-sm">ข้อผิดพลาดในการประมวลผลโลโก้</h4>
+              <p className="text-[11px] text-rose-700">{logoError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLogoError('')}
+            className="text-xs text-rose-700 font-bold hover:underline"
           >
             ปิด
           </button>
@@ -466,11 +540,16 @@ export const SystemSettingsView: React.FC = () => {
                 <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
+                    disabled={isProcessingLogo}
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-60"
                   >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>อัปโหลดรูปภาพใหม่</span>
+                    {isProcessingLogo ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isProcessingLogo ? 'กำลังประมวลผลรูปภาพ...' : 'อัปโหลดรูปภาพใหม่'}</span>
                   </button>
 
                   {formData.logoUrl && (
@@ -1118,10 +1197,11 @@ export const SystemSettingsView: React.FC = () => {
             {/* Primary Save Button */}
             <button
               type="submit"
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-700/25 transition cursor-pointer flex items-center justify-center gap-2"
+              disabled={isSaving}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-700/25 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Save className="w-4 h-4" />
-              <span>บันทึกการตั้งค่าทั้งหมด</span>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{isSaving ? 'กำลังบันทึกและซิงค์ Cloud...' : 'บันทึกการตั้งค่าทั้งหมด'}</span>
             </button>
           </div>
         </div>

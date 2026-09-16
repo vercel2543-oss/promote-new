@@ -182,7 +182,7 @@ interface AppContextType {
 
   // System Settings
   systemSettings: SystemSettings;
-  updateSystemSettings: (settings: Partial<SystemSettings>) => void;
+  updateSystemSettings: (settings: Partial<SystemSettings>) => Promise<void> | void;
   resetSystemSettings: () => void;
 
   // Data
@@ -426,13 +426,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         setIsFirebaseSyncing(true);
 
-        // Verify remote users and settings count in Firestore
+        // Verify remote users and settings in Firestore
         const remoteUsers = await FirebaseService.getUsers();
         const remoteSettings = await FirebaseService.getSystemSettings();
 
-        // If Firestore is empty or has an older partial dataset (< 56 accounts)
-        if (!remoteSettings || !remoteUsers || remoteUsers.length < 56) {
-          console.log('Syncing and seeding complete initial dataset (56 accounts / 48 evaluatees) to Firebase Firestore...');
+        // Seed ONLY if Firestore is completely empty on fresh install (no users AND no settings document)
+        const isCompletelyEmpty = (!remoteUsers || remoteUsers.length === 0) && !remoteSettings;
+        if (isCompletelyEmpty) {
+          console.log('First-time database initialization: seeding complete initial dataset to Firebase Firestore...');
           await FirebaseService.seedInitialData(
             INITIAL_USERS,
             INITIAL_COMMITTEE_GROUPS,
@@ -442,6 +443,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             GRADE_THRESHOLDS,
             INITIAL_TARGET_POSITION_GROUPS
           );
+        } else if (!remoteUsers || remoteUsers.length === 0) {
+          console.log('Seeding initial users because remote users collection is empty...');
+          for (let i = 0; i < INITIAL_USERS.length; i += 20) {
+            const chunk = INITIAL_USERS.slice(i, i + 20);
+            await Promise.all(chunk.map((u) => FirebaseService.saveUser(u)));
+          }
         } else {
           // Check if remote roles need synchronization for Pratchya and Rannaphat
           const pratchyaRemote = remoteUsers.find((u) => u.name.includes('ปรัชญา'));
@@ -484,7 +491,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Setup real-time listeners for all models across all devices (PC, Android, iOS)
         unsubSettings = FirebaseService.listenSystemSettings((remoteSettings) => {
           if (remoteSettings) {
-            setSystemSettings((prev) => ({ ...prev, ...remoteSettings }));
+            setSystemSettings((prev) => {
+              const merged = { ...prev, ...remoteSettings };
+              try {
+                localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+              } catch (e) {
+                // ignore storage error if quota reached
+              }
+              return merged;
+            });
           }
         });
 
@@ -1042,18 +1057,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logAudit('UPDATE_PROFILE', `อัปเดตข้อมูลโปรไฟล์และรูปภาพ: ${updates.name || currentUser.name}`);
   };
 
-  const updateSystemSettings = (newSettings: Partial<SystemSettings>) => {
-    setSystemSettings((prev) => {
-      const updated = { ...prev, ...newSettings };
-      FirebaseService.saveSystemSettings(updated).catch(console.error);
-      return updated;
-    });
+  const updateSystemSettings = async (newSettings: Partial<SystemSettings>): Promise<void> => {
+    const updated = { ...systemSettings, ...newSettings };
+    setSystemSettings(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+      await FirebaseService.saveSystemSettings(updated);
+    } catch (error) {
+      console.error('Failed to save system settings to Firebase:', error);
+      throw error;
+    }
     logAudit('UPDATE_SYSTEM_SETTINGS', `แก้ไขการตั้งค่าระบบ: ชื่อแอพ/ชื่อโรงเรียน/โลโก้/โหมดทดสอบ`);
   };
 
-  const resetSystemSettings = () => {
+  const resetSystemSettings = async () => {
     setSystemSettings(DEFAULT_SETTINGS);
-    FirebaseService.saveSystemSettings(DEFAULT_SETTINGS).catch(console.error);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
+      await FirebaseService.saveSystemSettings(DEFAULT_SETTINGS);
+    } catch (error) {
+      console.error('Failed to reset system settings in Firebase:', error);
+    }
     logAudit('RESET_SYSTEM_SETTINGS', 'คืนค่าการตั้งค่าระบบเป็นค่าเริ่มต้น');
   };
 
